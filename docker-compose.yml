@@ -1,0 +1,16 @@
+version: '2'
+
+networks:
+  appl:
+    driver: bridge
+
+services:
+  metal-console:
+    tty: true
+    build:
+      context: .
+    image: registry.fi-ts.io/metal/metal-console
+    ports:
+      - "2222:2222"
+    environment:
+      METAL_CONSOLE_METAL_API_URL: localhost:8080
