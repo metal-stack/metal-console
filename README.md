@@ -16,3 +16,10 @@ ssh -i <private key> <uuid of the device>@<hostname of metal-console server>
 The metal-console will then lookup the given username as device uuid on metal-api, request which console protocol to use.
 If the device uuid is a valid device, it will then use the provided private key to authenticate against the ssh public key 
 stored in the metal-api for this device. If access is granted, the user will have access to the console.
+
+
+## TODO
+
+- If a second console access starts to same device, kill existing one
+- kill inactive(user input) console sessions after specific idle time
+- kill console session when device is destroyed
