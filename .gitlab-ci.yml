@@ -7,8 +7,6 @@ stages:
 push:
   stage: push
   script:
-    - make
-    - mc config host add fits https://blobstore.fi-ts.io $ACCESS_KEY "${SECRET_KEY}"
-    - mc cp bin/metal-console fits/metal/metal-console/
+    - docker-make -L
   only:
     - master
