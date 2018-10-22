@@ -1,0 +1,14 @@
+---
+image: registry.cloud.fits/fits/builder:7-dev
+
+stages:
+  - push
+
+push:
+  stage: push
+  script:
+    - make
+    - mc config host add fits https://blobstore.fi-ts.io $ACCESS_KEY "${SECRET_KEY}"
+    - mc cp bin/metal-console fits/metal/metal-console/
+  only:
+    - master
