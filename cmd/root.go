@@ -15,11 +15,19 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
-// Run start ssh server and listen for console connections.
-func Run(port int) error {
+var (
+	url string
+)
 
+type Console struct {
+	Spec Specification
+}
+
+// Run start ssh server and listen for console connections.
+func Run(spec *Specification) error {
+	url = spec.MetalAPIUrl
 	s := &ssh.Server{
-		Addr:             fmt.Sprintf(":%d", port),
+		Addr:             fmt.Sprintf(":%d", spec.Port),
 		Handler:          sessionHandler,
 		PublicKeyHandler: authHandler,
 	}
@@ -30,13 +38,23 @@ func Run(port int) error {
 	}
 	s.AddHostKey(hostkey)
 
-	log.Info("starting ssh server", "port", port)
+	log.Info("starting ssh server", "port", spec.Port)
 	return s.ListenAndServe()
 }
 
 func sessionHandler(s ssh.Session) {
 	io.WriteString(s, fmt.Sprintf("connecting to console of %s\n", s.User()))
 	io.WriteString(s, fmt.Sprintf("Exit with <STRG>5\n"))
+
+	metalDevice, err := getDevice(url, s.User())
+	if err != nil {
+		log.Error("unable to fetch requested device", "device", s.User(), "error", err)
+		s.Exit(1)
+	}
+	if metalDevice == nil {
+		log.Error("requested device is nil", "device", s.User())
+		s.Exit(1)
+	}
 
 	cmd := exec.Command("virsh", "console", s.User())
 	cmd.Env = os.Environ()
@@ -67,14 +85,19 @@ func sessionHandler(s ssh.Session) {
 func authHandler(ctx ssh.Context, publickey ssh.PublicKey) bool {
 	device := ctx.User()
 	log.Info("authHandler", "device", device, "publickey", publickey)
-	knownAuthorizedKeys := getAuthorizedKeysforDevice(device)
+	knownAuthorizedKeys, err := getAuthorizedKeysforDevice(device)
+	if err != nil {
+		log.Error("authHandler no authorized_keys found", "device", device, "error", err)
+		return false
+	}
 	for _, key := range knownAuthorizedKeys {
+		log.Info("authHandler", "device", device, "authorized_key", key)
 		same := ssh.KeysEqual(publickey, key)
 		if same {
 			return true
 		}
 	}
-	return true
+	return false
 }
 
 func loadHostKey() (gossh.Signer, error) {
@@ -90,7 +113,22 @@ func setWinsize(f *os.File, w, h int) {
 		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})))
 }
 
-func getAuthorizedKeysforDevice(device string) []ssh.PublicKey {
-	// TODO ask metal-api for publickey by user (device)
-	return nil
+func getAuthorizedKeysforDevice(device string) ([]ssh.PublicKey, error) {
+	metalDevice, err := getDevice(url, device)
+	result := []ssh.PublicKey{}
+	if err != nil {
+		log.Error("unable to fetch requested device", "device", device, "error", err)
+		return result, err
+	}
+	if metalDevice == nil {
+		log.Error("requested device is nil", "device", device)
+		return result, err
+	}
+	pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(*metalDevice.SSHPubKey))
+	if err != nil {
+		return result, fmt.Errorf("error parsing public key:%v", err)
+	}
+	// TODO metal-api must have multiple pubkeys per device
+	result = append(result, pubkey)
+	return result, nil
 }

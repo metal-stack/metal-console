@@ -25,3 +25,13 @@ ${BINARY}: clean test
 
 clean:
 	rm -f ${BINARY}
+
+
+swagger:
+	rm -rf metal-api; \
+	mkdir -p bin metal-api; \
+	if [ ! -f bin/swagger ]; then \
+		curl -fLSs https://github.com/go-swagger/go-swagger/releases/download/v0.17.0/swagger_linux_amd64 -o bin/swagger; \
+		chmod +x bin/swagger; \
+	fi; \
+	bin/swagger generate client --target=metal-api -f metal-api.json --skip-validation
