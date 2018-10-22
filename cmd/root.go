@@ -15,21 +15,16 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
-var (
-	url string
-)
-
 type Console struct {
-	Spec Specification
+	Spec *Specification
 }
 
 // Run start ssh server and listen for console connections.
-func Run(spec *Specification) error {
-	url = spec.MetalAPIUrl
+func (c *Console) Run() error {
 	s := &ssh.Server{
-		Addr:             fmt.Sprintf(":%d", spec.Port),
-		Handler:          sessionHandler,
-		PublicKeyHandler: authHandler,
+		Addr:             fmt.Sprintf(":%d", c.Spec.Port),
+		Handler:          c.sessionHandler,
+		PublicKeyHandler: c.authHandler,
 	}
 
 	hostkey, err := loadHostKey()
@@ -38,15 +33,15 @@ func Run(spec *Specification) error {
 	}
 	s.AddHostKey(hostkey)
 
-	log.Info("starting ssh server", "port", spec.Port)
+	log.Info("starting ssh server", "port", c.Spec.Port)
 	return s.ListenAndServe()
 }
 
-func sessionHandler(s ssh.Session) {
+func (c *Console) sessionHandler(s ssh.Session) {
 	io.WriteString(s, fmt.Sprintf("connecting to console of %s\n", s.User()))
 	io.WriteString(s, fmt.Sprintf("Exit with <STRG>5\n"))
 
-	metalDevice, err := getDevice(url, s.User())
+	metalDevice, err := getDevice(c.Spec.MetalAPIUrl, s.User())
 	if err != nil {
 		log.Error("unable to fetch requested device", "device", s.User(), "error", err)
 		s.Exit(1)
@@ -82,10 +77,10 @@ func sessionHandler(s ssh.Session) {
 	}
 }
 
-func authHandler(ctx ssh.Context, publickey ssh.PublicKey) bool {
+func (c *Console) authHandler(ctx ssh.Context, publickey ssh.PublicKey) bool {
 	device := ctx.User()
 	log.Info("authHandler", "device", device, "publickey", publickey)
-	knownAuthorizedKeys, err := getAuthorizedKeysforDevice(device)
+	knownAuthorizedKeys, err := c.getAuthorizedKeysforDevice(device)
 	if err != nil {
 		log.Error("authHandler no authorized_keys found", "device", device, "error", err)
 		return false
@@ -97,6 +92,7 @@ func authHandler(ctx ssh.Context, publickey ssh.PublicKey) bool {
 			return true
 		}
 	}
+	log.Warn("authHandler no matching authorized_key found", "device", device)
 	return false
 }
 
@@ -113,8 +109,8 @@ func setWinsize(f *os.File, w, h int) {
 		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})))
 }
 
-func getAuthorizedKeysforDevice(device string) ([]ssh.PublicKey, error) {
-	metalDevice, err := getDevice(url, device)
+func (c *Console) getAuthorizedKeysforDevice(device string) ([]ssh.PublicKey, error) {
+	metalDevice, err := getDevice(c.Spec.MetalAPIUrl, device)
 	result := []ssh.PublicKey{}
 	if err != nil {
 		log.Error("unable to fetch requested device", "device", device, "error", err)

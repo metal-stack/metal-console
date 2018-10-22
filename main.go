@@ -15,10 +15,6 @@ var (
 	builddate string
 )
 
-const (
-	port = 2222
-)
-
 func main() {
 	var spec cmd.Specification
 	err := envconfig.Process("metal-console", &spec)
@@ -29,7 +25,10 @@ func main() {
 	}
 	log.Info("metal-console", "version", getVersionString(), "port", spec.Port, "metal-api", spec.MetalAPIUrl)
 
-	err = cmd.Run(&spec)
+	console := &cmd.Console{
+		Spec: &spec,
+	}
+	err = console.Run()
 	if err != nil {
 		log.Error("starting ssh server failed", "error", err)
 	}
