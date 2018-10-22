@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -16,7 +17,8 @@ import (
 )
 
 type Console struct {
-	Spec *Specification
+	Spec             *Specification
+	ConsoleForDevice *sync.Map
 }
 
 // Run start ssh server and listen for console connections.
@@ -33,21 +35,22 @@ func (c *Console) Run() error {
 	}
 	s.AddHostKey(hostkey)
 
-	log.Info("starting ssh server", "port", c.Spec.Port)
+	log.Info("starting ssh server", "port", c.Spec.Port, "metal-api", c.Spec.MetalAPIUrl)
 	return s.ListenAndServe()
 }
 
 func (c *Console) sessionHandler(s ssh.Session) {
 	io.WriteString(s, fmt.Sprintf("connecting to console of %s\n", s.User()))
-	io.WriteString(s, fmt.Sprintf("Exit with <STRG>5\n"))
+	io.WriteString(s, fmt.Sprintf("Exit with <STRG> 5\n"))
 
-	metalDevice, err := getDevice(c.Spec.MetalAPIUrl, s.User())
-	if err != nil {
-		log.Error("unable to fetch requested device", "device", s.User(), "error", err)
+	console, ok := c.ConsoleForDevice.Load(s.User())
+	defer c.ConsoleForDevice.Delete(s.User())
+	if !ok {
+		log.Error("unable to fetch requested device", "device", s.User())
 		s.Exit(1)
 	}
-	if metalDevice == nil {
-		log.Error("requested device is nil", "device", s.User())
+	if console == nil {
+		log.Error("requested device console is nil", "device", s.User())
 		s.Exit(1)
 	}
 
@@ -112,8 +115,8 @@ func setWinsize(f *os.File, w, h int) {
 }
 
 func (c *Console) getAuthorizedKeysforDevice(device string) ([]ssh.PublicKey, error) {
-	metalDevice, err := getDevice(c.Spec.MetalAPIUrl, device)
 	result := []ssh.PublicKey{}
+	metalDevice, err := getDevice(c.Spec.MetalAPIUrl, device)
 	if err != nil {
 		log.Error("unable to fetch requested device", "device", device, "error", err)
 		return result, err
@@ -122,6 +125,8 @@ func (c *Console) getAuthorizedKeysforDevice(device string) ([]ssh.PublicKey, er
 		log.Error("requested device is nil", "device", device)
 		return result, err
 	}
+	// FIXME use metalDevice.IP til metalDevice.Console is implemented
+	c.ConsoleForDevice.Store(device, metalDevice.IP)
 	pubkey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(*metalDevice.SSHPubKey))
 	if err != nil {
 		return result, fmt.Errorf("error parsing public key:%v", err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"sync"
 
 	"git.f-i-ts.de/cloud-native/maas/metal-console/cmd"
 	log "github.com/inconshreveable/log15"
@@ -26,7 +27,8 @@ func main() {
 	log.Info("metal-console", "version", getVersionString(), "port", spec.Port, "metal-api", spec.MetalAPIUrl)
 
 	console := &cmd.Console{
-		Spec: &spec,
+		Spec:             &spec,
+		ConsoleForDevice: &sync.Map{},
 	}
 	err = console.Run()
 	if err != nil {
