@@ -8,5 +8,5 @@ require (
 	github.com/kr/pty v1.1.3
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
-	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e // indirect
+	golang.org/x/crypto v0.0.0-20181015023909-0c41d7ab0a0e
 )
