@@ -21,4 +21,7 @@ FROM alpine:3.8
 LABEL maintainer FI-TS Devops <devops@f-i-ts.de>
 COPY --from=builder /app/bin/metal-console /metal-console
 COPY id_rsa /id_rsa
+RUN apk add \
+        ipmitool \
+        libvirt-client
 CMD ["/metal-console"]
