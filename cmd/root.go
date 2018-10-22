@@ -56,7 +56,7 @@ func (c *Console) sessionHandler(s ssh.Session) {
 
 	// TODO must be different for metal-lab devices and real hardware.
 	// for virsh must be in the form virsh --connect <libvirt uri> console <device>
-	cmd := exec.Command("virsh", "console", s.User())
+	cmd := exec.Command("virsh", "console", s.User(), "--force")
 	cmd.Env = os.Environ()
 	ptyReq, winCh, isPty := s.Pty()
 	if isPty {
