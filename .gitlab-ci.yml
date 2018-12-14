@@ -1,5 +1,5 @@
 ---
-image: registry.cloud.fits/fits/builder:7-dev
+image: registry.cloud.fits/fits/buildtools:1
 
 stages:
   - push
@@ -7,6 +7,6 @@ stages:
 push:
   stage: push
   script:
-    - docker-make -L
+    - docker-make --Lint
   only:
     - master
