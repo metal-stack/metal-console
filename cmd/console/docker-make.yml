@@ -1,0 +1,20 @@
+---
+version: '1'
+name: metal-console
+username: metal
+registry-host: registry.fi-ts.io
+default-build-args:
+  - http_proxy=${HTTP_PROXY}
+  - https_proxy=${HTTP_PROXY}
+  - HTTP_PROXY=${HTTP_PROXY}
+  - HTTPS_PROXY=${HTTP_PROXY}
+  - NO_PROXY=${NO_PROXY}
+  - no_proxy=${NO_PROXY}
+builds:
+  -
+    name: "metal-console"
+    build-args:
+      - SHA=$(git rev-parse --short=8 HEAD)
+      - GITVERSION=$(git describe --long --all)
+    tags:
+      - latest
