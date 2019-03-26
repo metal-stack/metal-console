@@ -13,8 +13,5 @@ default-build-args:
 builds:
   -
     name: "bmc-proxy"
-    build-args:
-      - SHA=$(git rev-parse --short=8 HEAD)
-      - GITVERSION=$(git describe --long --all)
     tags:
       - latest
