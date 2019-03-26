@@ -7,7 +7,7 @@ stages:
 push:
   stage: push
   script:
-    - docker-make --Lint -w bmcproxy
-    - docker-make --Lint -w console
+    - docker-make --Lint -w cmd/bmcproxy
+    - docker-make --Lint -w cmd/console
   only:
     - master
