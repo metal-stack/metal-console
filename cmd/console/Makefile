@@ -3,8 +3,8 @@ SHA := $(shell git rev-parse --short=8 HEAD)
 GITVERSION := $(shell git describe --long --all)
 BUILDDATE := $(shell date -Iseconds)
 VERSION := $(or ${VERSION},devel)
-
-BINARY := bin/metal-console
+BIN_DIR := ../../bin
+BINARY := ${BIN_DIR}/metal-console
 
 all: $(BINARY)
 
@@ -26,12 +26,15 @@ ${BINARY}: clean test
 clean:
 	rm -f ${BINARY}
 
+fmt:
+	go fmt ./...
 
 swagger:
 	rm -rf metal-api; \
-	mkdir -p bin metal-api; \
-	if [ ! -f bin/swagger ]; then \
-		curl -fLSs https://github.com/go-swagger/go-swagger/releases/download/v0.17.0/swagger_linux_amd64 -o bin/swagger; \
-		chmod +x bin/swagger; \
+	mkdir -p ${BIN_DIR} metal-api; \
+	if [ ! -f ${BIN_DIR}/swagger ]; then \
+		curl -fLSs https://github.com/go-swagger/go-swagger/releases/download/v0.17.0/swagger_linux_amd64 -o ${BIN_DIR}/swagger; \
+		chmod +x ${BIN_DIR}/swagger; \
 	fi; \
-	bin/swagger generate client --target=metal-api -f metal-api.json --skip-validation
+	GO111MODULE=off \
+	${BIN_DIR}/swagger generate client --target=metal-api -f metal-api.json --skip-validation
