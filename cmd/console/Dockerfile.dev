@@ -2,6 +2,6 @@ FROM scratch
 
 LABEL maintainer FI-TS Devops <devops@f-i-ts.de>
 
-COPY metal-console id_rsa ca.crt client.crt client.pem /
+COPY bin/metal-console id_rsa ca.crt client.crt client.pem /
 
 CMD ["/metal-console"]

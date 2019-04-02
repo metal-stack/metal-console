@@ -1,11 +1,11 @@
 BINARY := bmc-proxy
 COMMONDIR := $(or ${COMMONDIR},../../../common)
 
-in-docker: clean-client generate-client test all;
+in-docker: clean-client generate-client fmt test all;
 
 include $(COMMONDIR)/Makefile.inc
 
-release:: generate-client test all ;
+release:: generate-client fmt test all;
 
 .PHONY: clean-local-dirs
 clean-local-dirs:
@@ -18,8 +18,8 @@ clean-client: clean-local-dirs
 
 .PHONY: fmt
 fmt:
-	go fmt ./...
+	GO111MODULE=off go fmt ./...
 
 .PHONY: generate-client
-generate-client: clean-local-dirs
+generate-client: clean-local-dirs fmt
 	GO111MODULE=off swagger generate client --target=metal-api -f metal-api.json --skip-validation

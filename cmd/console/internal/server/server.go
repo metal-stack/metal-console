@@ -27,7 +27,7 @@ type consoleServer struct {
 func New(log *zap.Logger, spec *Specification) *consoleServer {
 	return &consoleServer{
 		log:           log,
-		machineClient: newMachineClient(spec.APIAddress),
+		machineClient: newMachineClient(spec.MetalAPIAddress),
 		spec:          spec,
 		consoles:      &sync.Map{},
 		mutex:         sync.RWMutex{},
@@ -154,7 +154,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, machineID string) (gossh.
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	}
 
-	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, cs.spec.MgmtAddress, sshConfig)
+	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, cs.spec.BMCReverseProxyAddress, sshConfig)
 	if err != nil {
 		cs.log.Sugar().Fatal(err)
 		os.Exit(-1)
@@ -204,9 +204,10 @@ func (cs *consoleServer) connectToManagementNetwork() *tls.Conn {
 	}
 	tlsConfig.BuildNameToCertificate()
 
-	tcpConn, err := tls.Dial("tcp", cs.spec.MgmtAddress, tlsConfig)
+	tcpConn, err := tls.Dial("tcp", cs.spec.BMCReverseProxyAddress, tlsConfig)
 	if err != nil {
-		cs.log.Sugar().Error("TCP Dial failed", "address", cs.spec.MgmtAddress, "error", err)
+		cs.log.Sugar().Error("TCP Dial failed", "address", cs.spec.BMCReverseProxyAddress, "error", err)
+		return nil
 	}
 	cs.log.Sugar().Info("Connected to: ", tcpConn.RemoteAddr())
 

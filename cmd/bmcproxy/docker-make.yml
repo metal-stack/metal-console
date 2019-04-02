@@ -3,6 +3,7 @@ version: '1'
 name: bmc-proxy
 username: metal
 registry-host: registry.fi-ts.io
+default-build-name: "bmc-proxy"
 default-build-args:
   - http_proxy=${HTTP_PROXY}
   - https_proxy=${HTTP_PROXY}

@@ -6,6 +6,6 @@ RUN apk -u add \
     ipmitool \
     libvirt-client
 
-COPY bmc-proxy id_rsa /
+COPY bin/bmc-proxy id_rsa /
 
 CMD ["/bmc-proxy"]

@@ -2,11 +2,11 @@ package server
 
 // Specification configures the application via environment.
 type Specification struct {
-	BindAddress string `default:"localhost"`
-	APIAddress  string `default:"localhost:8080" envconfig:"metal_api_address"`
-	MgmtAddress string `default:"localhost:3333" envconfig:"metal_mgmt_address"`
-	Port        int    `default:"2222"`
-	PublicKey   string `default:"" split_words:"true"` // path to public SSH key (activates DevMode)
+	BindAddress            string `default:"localhost"`
+	MetalAPIAddress        string `default:"localhost:8080" envconfig:"metal_api_address"`
+	BMCReverseProxyAddress string `default:"localhost:3333" envconfig:"bmc_reverse_proxy_address"`
+	Port                   int    `default:"2222"`
+	PublicKey              string `default:"" split_words:"true"` // path to public SSH key (activates DevMode)
 }
 
 func (s *Specification) DevMode() bool {

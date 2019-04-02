@@ -9,164 +9,7 @@ networks:
       config:
         - subnet: ${NETWORK_SUBNET}
 
-#volumes:
-#  netbox-static-files:
-#  netbox-nginx-config:
-#  netbox-init-config-startup-scripts:
-#  netbox-init-config-initializers:
-#  netbox-init-config-configuration:
-
 services:
-#  nsqlookupd:
-#    image: nsqio/nsq:v1.1.0
-#    container_name: ${NSQLOOKUPD_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    ports:
-#      - "${NSQLOOKUPD_TCP_PORT_HOST}:${NSQLOOKUPD_TCP_PORT}"
-#      - "${NSQLOOKUPD_HTTP_PORT_HOST}:${NSQLOOKUPD_HTTP_PORT}"
-#    command: /nsqlookupd -log-level error
-#
-#  nsqd:
-#    image: nsqio/nsq:v1.1.0
-#    container_name: ${NSQD_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    ports:
-#      - "${NSQD_TCP_PORT_HOST}:${NSQD_TCP_PORT}"
-#      - "${NSQD_HTTP_PORT_HOST}:${NSQD_HTTP_PORT}"
-#    command: /nsqd -log-level error -lookupd-tcp-address=nsqlookupd:${NSQLOOKUPD_TCP_PORT} -broadcast-address=${NETWORK_GATEWAY}
-#
-#  rethinkdb:
-#    image: rethinkdb:test
-#    container_name: ${RETHINKDB_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    ports:
-#      - "${RETHINKDB_PORT_HOST}:${RETHINKDB_PORT}"
-#      - "${RETHINKDB_WEB_PORT_HOST}:${RETHINKDB_WEB_PORT}"
-#
-#  netbox:
-#    image: ninech/netbox
-#    container_name: ${NETBOX_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    ports:
-#      - "${NETBOX_PORT_HOST}:${NETBOX_PORT}"
-#    environment:
-#      DB_NAME: netbox
-#      DB_USER: netbox
-#      DB_PASSWORD: metal
-#      DB_HOST: netbox-postgres
-#      MEDIA_ROOT: /opt/netbox/netbox/media
-#      MAX_PAGE_SIZE: 0
-#      SECRET_KEY: zfg6S2vDRC2U4VrAvpnTcvbMVC8z5w
-#      SUPERUSER_NAME: admin
-#      SUPERUSER_EMAIL: admin@example.com
-#      SUPERUSER_PASSWORD: metal
-#      SUPERUSER_API_TOKEN: de599cb74da0e4d16c6ca45cb80d5c9c072c1614
-#      WEBHOOKS_ENABLED: "false"
-#      LOGIN_REQUIRED: "true"
-#    volumes:
-#      - netbox-init-config-startup-scripts:/opt/netbox/startup_scripts
-#      - netbox-init-config-initializers:/opt/netbox/initializers
-#      - netbox-init-config-configuration:/etc/netbox/config
-#      - netbox-nginx-config:/etc/netbox-nginx
-#      - netbox-static-files:/opt/netbox/netbox/static
-#
-#  netbox-postgres:
-#    image: postgres:11-alpine
-#    container_name: ${NETBOX_POSTGRES_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    environment:
-#      POSTGRES_USER: netbox
-#      POSTGRES_PASSWORD: metal
-#      POSTGRES_DB: netbox
-#
-#  netbox-nginx:
-#    image: nginx:1.15-alpine
-#    container_name: ${NETBOX_NGINX_CONTAINER_NAME}
-#    command: nginx -c /etc/netbox-nginx/nginx.conf
-#    networks:
-#      - metal
-#    ports:
-#      - "${NETBOX_NGINX_PORT_HOST}:${NETBOX_NGINX_PORT}"
-#    volumes:
-#      - netbox-static-files:/opt/netbox/netbox/static:ro
-#      - netbox-nginx-config:/etc/netbox-nginx:ro
-#
-#  netbox-api-proxy:
-#    image: registry.fi-ts.io/metal/netbox-api-proxy:latest
-#    container_name: ${NETBOX_API_PROXY_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    ports:
-#      - "${NETBOX_API_PROXY_PORT_HOST}:${NETBOX_API_PROXY_PORT}"
-#    environment:
-#      NETBOX_API_PROXY_HOST: http://netbox:${NETBOX_PORT}/
-#      NETBOX_API_PROXY_BIND_ADDRESS: 0.0.0.0
-#      NETBOX_API_PROXY_LOG_LEVEL: DEBUG
-#
-#  netbox-init-config:
-#    image: registry.fi-ts.io/metal/netbox-init-config:latest
-#    container_name: ${NETBOX_INIT_CONFIG_CONTAINER_NAME}
-#    networks:
-#      - metal
-#    volumes:
-#      - netbox-init-config-startup-scripts:/opt/netbox/startup_scripts
-#      - netbox-init-config-initializers:/opt/netbox/initializers
-#      - netbox-init-config-configuration:/opt/netbox/config
-#
-#  metal-api:
-#    image: registry.fi-ts.io/metal/metal-api
-#    container_name: ${METAL_API_CONTAINER_NAME}
-#    tty: true
-#    networks:
-#      metal:
-#        ipv4_address: ${METAL_API_IP}
-#    ports:
-#      - "${METAL_API_PORT_HOST}:${METAL_API_PORT}"
-#    environment:
-#      DEBUG: 1
-#      ZAP_ENCODING: logfmt
-#      ZAP_LEVEL: debug
-#      METAL_API_BIND_ADDR: 0.0.0.0
-#      METAL_API_PORT: ${METAL_API_PORT}
-#      METAL_API_DB_ADDR: rethinkdb:${RETHINKDB_PORT}
-#      METAL_API_NETBOX_ADDR: netbox-api-proxy:${NETBOX_API_PROXY_PORT}
-#      METAL_API_NSQD_ADDR: nsqd:${NSQD_TCP_PORT}
-#      METAL_API_NSQD_HTTP_ADDR: nsqd:${NSQD_HTTP_PORT}
-#      METAL_API_NETBOX_API_TOKEN: de599cb74da0e4d16c6ca45cb80d5c9c072c1614
-#      METAL_API_LOG_LEVEL: debug
-#
-#  pixiecore:
-#    image: registry.fi-ts.io/metal/pixiecore:latest
-#    container_name: pixiecore
-#    privileged: True
-#    network_mode: host
-#    command: ["api", "http://${METAL_CORE_IP}:${METAL_CORE_PORT}", "--debug", "--dhcp-no-bind"]
-#
-#  metal-core:
-#    image: registry.fi-ts.io/metal/metal-core
-#    container_name: ${METAL_CORE_CONTAINER_NAME}
-#    networks:
-#      metal:
-#        ipv4_address: ${METAL_CORE_IP}
-#    ports:
-#      - "${METAL_CORE_PORT_HOST}:${METAL_CORE_PORT}"
-#    environment:
-#      METAL_CORE_BIND_ADDRESS: 0.0.0.0
-#      METAL_CORE_IP: ${METAL_CORE_IP}
-#      METAL_CORE_PORT: ${METAL_CORE_PORT}
-#      METAL_CORE_MQ_ADDRESS: nsqlookupd:${NSQLOOKUPD_HTTP_PORT}
-#      METAL_CORE_PARTITION_ID: vagrant-lab
-#      METAL_CORE_RACK_ID: Vagrant Rack 1
-#      METAL_CORE_LOG_LEVEL: DEBUG
-#      METAL_CORE_METAL_API_IP: ${METAL_API_IP}
-#      METAL_CORE_METAL_API_PORT: ${METAL_API_PORT}
-#      METAL_CORE_HAMMER_IMAGE_PREFIX: metal-hammer
-
   bmc-proxy:
     build:
       context: cmd/bmcproxy
@@ -182,15 +25,15 @@ services:
     environment:
       BMC_PROXY_PORT: ${BMC_PROXY_PORT}
 
-  metal-mgmt:
+  bmc-reverse-proxy:
     build:
-      context: metal-mgmt
-    image: registry.fi-ts.io/metal/metal-mgmt:latest
-    container_name: ${METAL_MGMT_CONTAINER_NAME}
+      context: bmc-reverse-proxy
+    image: registry.fi-ts.io/metal/bmc-reverse-proxy:latest
+    container_name: ${BMC_REVERSE_PROXY_CONTAINER_NAME}
     networks:
       - metal
     ports:
-      - "${METAL_MGMT_PORT_HOST}:${METAL_MGMT_PORT}"
+      - "${BMC_REVERSE_PROXY_PORT_HOST}:${BMC_REVERSE_PROXY_PORT}"
 
   metal-console:
     build:
@@ -203,7 +46,10 @@ services:
       - metal
     ports:
       - "${METAL_CONSOLE_PORT_HOST}:${METAL_CONSOLE_PORT}"
+    volumes:
+      - ${HOME}/.ssh/id_rsa.pub:/id_rsa.pub
     environment:
       METAL_CONSOLE_PORT: ${METAL_CONSOLE_PORT}
-      METAL_CONSOLE_METAL_API_ADDRESS: metal-api:${METAL_API_PORT}
-      METAL_CONSOLE_METAL_MGMT_ADDRESS: metal-mgmt:${METAL_MGMT_PORT}
+      METAL_CONSOLE_METAL_API_ADDRESS: ${METAL_API_ADDRESS}
+      METAL_CONSOLE_BMC_REVERSE_PROXY_ADDRESS: bmc-reverse-proxy:${BMC_REVERSE_PROXY_PORT}
+      METAL_CONSOLE_PUBLIC_KEY: /id_rsa.pub
