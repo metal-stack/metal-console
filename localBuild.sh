@@ -6,4 +6,4 @@ cd ../console
 make
 cd ../..
 
-docker-compose build
+docker-compose -f docker-compose.dev.yaml build

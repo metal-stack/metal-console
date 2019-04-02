@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-docker-compose up
-docker-compose down
+docker-compose -f docker-compose.dev.yaml up
+docker-compose -f docker-compose.dev.yaml down
