@@ -138,9 +138,9 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 
 func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 	modes := gossh.TerminalModes{
-		gossh.ECHO:          0,     // disable echoing
-		gossh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		gossh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		gossh.ECHO:          0,      // disable echoing
+		gossh.TTY_OP_ISPEED: 115200, // input speed in baud
+		gossh.TTY_OP_OSPEED: 115200, // output speed in baud
 	}
 
 	if err := sshSession.RequestPty("xterm", 80, 40, modes); err != nil {

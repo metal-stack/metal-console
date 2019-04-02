@@ -51,6 +51,7 @@ func (p *bmcProxy) Run() {
 func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 	metalIPMI := p.receiveIPMIData(s)
+	p.log.Sugar().Info("connection to", "machineID", machineID)
 	if metalIPMI == nil {
 		p.log.Sugar().Fatal("failed to receive IPMI data", "machineID", machineID)
 		s.Exit(1)
@@ -64,7 +65,11 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		cmd = exec.Command("virsh", "console", *metalIPMI.Address, "--force")
 	} else {
 		io.WriteString(s, "Exit with '~.'\n")
-		cmd = exec.Command("ipmitool", "-I", "lanplus", "-H", *metalIPMI.Address, "-U", *metalIPMI.User, "-P", *metalIPMI.Password, "sol", "activate")
+		addressParts := strings.Split(*metalIPMI.Address, ":")
+		host := addressParts[0]
+		port := addressParts[1]
+
+		cmd = exec.Command("ipmitool", "-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", *metalIPMI.Password, "sol", "activate")
 	}
 	cmd.Env = os.Environ()
 	ptyReq, winCh, isPty := s.Pty()
