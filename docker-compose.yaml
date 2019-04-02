@@ -18,8 +18,6 @@ services:
     container_name: ${BMC_PROXY_CONTAINER_NAME}
     networks:
       - metal
-    volumes:
-      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
     ports:
       - "${BMC_PROXY_PORT_HOST}:${BMC_PROXY_PORT}"
     environment:
