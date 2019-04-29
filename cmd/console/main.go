@@ -23,7 +23,7 @@ func main() {
 	}
 
 	zapup.MustRootLogger().Sugar().Info("metal-console", "version", getVersionString(),
-		"port", spec.Port, "metal-api", spec.MetalAPIAddress, "bmc reverse proxy address", spec.BMCReverseProxyAddress, "devmode", spec.DevMode())
+		"port", spec.Port, "metal-api", spec.MetalAPIAddress, "devmode", spec.DevMode())
 
 	server.New(zapup.MustRootLogger(), spec).Run()
 }

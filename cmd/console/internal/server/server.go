@@ -64,10 +64,19 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 	defer cs.consoles.Delete(machineID)
 
-	tcpConn := cs.connectToManagementNetwork()
+	m, err := cs.getMachine(machineID)
+	if err != nil {
+		cs.log.Sugar().Error("unable to fetch requested machine", "machineID", machineID, "error", err)
+		s.Exit(1)
+		return
+	}
+
+	mgmtServiceAddress := *m.Partition.Mgmtserviceaddress
+
+	tcpConn := cs.connectToManagementNetwork(mgmtServiceAddress)
 	defer tcpConn.Close()
 
-	sshConn, sshClient, sshSession := cs.connectSSH(tcpConn, machineID)
+	sshConn, sshClient, sshSession := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
 	defer func() {
 		sshSession.Close()
 		sshClient.Close()
@@ -148,13 +157,13 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 	}
 }
 
-func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session) {
+func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session) {
 	sshConfig := &gossh.ClientConfig{
 		User:            machineID,
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	}
 
-	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, cs.spec.BMCReverseProxyAddress, sshConfig)
+	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
 	if err != nil {
 		cs.log.Sugar().Fatal(err)
 		os.Exit(-1)
@@ -184,7 +193,7 @@ func (cs *consoleServer) getConsole(machineID string) (string, error) {
 	return c.(string), nil
 }
 
-func (cs *consoleServer) connectToManagementNetwork() *tls.Conn {
+func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
 	cert, err := tls.LoadX509KeyPair("/client.crt", "/client.pem")
 	if err != nil {
 		cs.log.Sugar().Error(err)
@@ -204,9 +213,9 @@ func (cs *consoleServer) connectToManagementNetwork() *tls.Conn {
 	}
 	tlsConfig.BuildNameToCertificate()
 
-	tcpConn, err := tls.Dial("tcp", cs.spec.BMCReverseProxyAddress, tlsConfig)
+	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
 	if err != nil {
-		cs.log.Sugar().Error("TCP Dial failed", "address", cs.spec.BMCReverseProxyAddress, "error", err)
+		cs.log.Sugar().Error("TCP Dial failed", "address", mgmtServiceAddress, "error", err)
 		return nil
 	}
 	cs.log.Sugar().Info("Connected to: ", tcpConn.RemoteAddr())
