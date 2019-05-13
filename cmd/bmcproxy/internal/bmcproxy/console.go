@@ -120,7 +120,7 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	}
 }
 
-func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.MetalIPMI {
+func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 	var ipmiData string
 	for i := 0; i < 5; i++ {
 		for _, env := range s.Environ() {
@@ -141,7 +141,7 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.MetalIPMI {
 		os.Exit(-1)
 	}
 
-	metalIPMI := &models.MetalIPMI{}
+	metalIPMI := &models.V1MachineIPMI{}
 	err := metalIPMI.UnmarshalBinary([]byte(ipmiData))
 	if err != nil {
 		p.log.Sugar().Error("Failed to unmarshal received IPMI data", "error", err)

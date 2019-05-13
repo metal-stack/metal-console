@@ -12,7 +12,7 @@ func newMachineClient(url string) *machine.Client {
 	return machine.New(transport, strfmt.Default)
 }
 
-func (cs *consoleServer) getMachine(machineID string) (*models.MetalMachine, error) {
+func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse, error) {
 	findMachineParams := machine.NewFindMachineParams()
 	findMachineParams.ID = machineID
 	metalMachine, err := cs.machineClient.FindMachine(findMachineParams)
@@ -22,7 +22,7 @@ func (cs *consoleServer) getMachine(machineID string) (*models.MetalMachine, err
 	return metalMachine.Payload, nil
 }
 
-func (cs *consoleServer) getIPMIData(machineID string) (*models.MetalIPMI, error) {
+func (cs *consoleServer) getIPMIData(machineID string) (*models.V1MachineIPMI, error) {
 	ipmiDataParams := machine.NewIPMIDataParams()
 	ipmiDataParams.ID = machineID
 	ipmiData, err := cs.machineClient.IPMIData(ipmiDataParams)
