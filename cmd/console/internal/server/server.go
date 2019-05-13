@@ -4,16 +4,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"sync"
+
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"github.com/gliderlabs/ssh"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
-	"io"
-	"io/ioutil"
-	"os"
-	"sync"
 )
 
 type consoleServer struct {
@@ -71,7 +72,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	mgmtServiceAddress := *m.Partition.Mgmtserviceaddress
+	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
 	tcpConn := cs.connectToManagementNetwork(mgmtServiceAddress)
 	defer tcpConn.Close()
@@ -224,11 +225,11 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 }
 
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineCIDR string) {
-	var metalIPMI *models.MetalIPMI
+	var metalIPMI *models.V1MachineIPMI
 	if cs.spec.DevMode() {
 		user := "ADMIN" //TODO
 		pw := "ADMIN"
-		metalIPMI = &models.MetalIPMI{
+		metalIPMI = &models.V1MachineIPMI{
 			Address:  &machineCIDR,
 			User:     &user,
 			Password: &pw,
@@ -275,16 +276,17 @@ func (cs *consoleServer) authHandler(ctx ssh.Context, publickey ssh.PublicKey) b
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
-	var m *models.MetalMachine
+	var m *models.V1MachineResponse
 	if cs.spec.DevMode() {
 		bb, err := ioutil.ReadFile(cs.spec.PublicKey)
 		if err != nil {
 			cs.log.Sugar().Error("unable to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
-		m = &models.MetalMachine{
-			Allocation: &models.MetalMachineAllocation{
-				Cidr: &machineID,
+		primary := true
+		m = &models.V1MachineResponse{
+			Allocation: &models.V1MachineAllocation{
+				Networks: []*models.V1MachineNetwork{&models.V1MachineNetwork{Primary: &primary, Ips: []string{machineID}}},
 				SSHPubKeys: []string{
 					string(bb),
 				},
@@ -303,7 +305,19 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		}
 	}
 
-	cs.consoles.Store(machineID, *m.Allocation.Cidr)
+	primaryIP := ""
+	for _, nw := range m.Allocation.Networks {
+		if *nw.Primary {
+			if len(nw.Ips) > 0 {
+				primaryIP = nw.Ips[0]
+				break
+			}
+		}
+	}
+	if primaryIP == "" {
+		return nil, fmt.Errorf("unable to detect primary IP of machine:%s", machineID)
+	}
+	cs.consoles.Store(machineID, primaryIP)
 
 	var pubKeys []ssh.PublicKey
 	for _, key := range m.Allocation.SSHPubKeys {
