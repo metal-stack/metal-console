@@ -14,5 +14,5 @@ require (
 	github.com/pkg/errors v0.8.0
 	go.uber.org/zap v1.9.1
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-	golang.org/x/net v0.0.0-20190328230028-74de082e2cca
+	golang.org/x/net v0.0.0-20190328230028-74de082e2cca // indirect
 )

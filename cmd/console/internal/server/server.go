@@ -22,7 +22,7 @@ type consoleServer struct {
 	machineClient *machine.Client
 	spec          *Specification
 	mutex         sync.RWMutex
-	consoles      *sync.Map
+	ips           *sync.Map
 }
 
 func New(log *zap.Logger, spec *Specification) *consoleServer {
@@ -30,7 +30,7 @@ func New(log *zap.Logger, spec *Specification) *consoleServer {
 		log:           log,
 		machineClient: newMachineClient(spec.MetalAPIAddress),
 		spec:          spec,
-		consoles:      &sync.Map{},
+		ips:           &sync.Map{},
 		mutex:         sync.RWMutex{},
 	}
 }
@@ -57,13 +57,13 @@ func (cs *consoleServer) Run() {
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
-	c, err := cs.getConsole(machineID)
+	ip, err := cs.getIP(machineID)
 	if err != nil {
 		cs.log.Sugar().Fatal("failed to get console", "machineID", machineID, "error", err)
 		s.Exit(1)
 		return
 	}
-	defer cs.consoles.Delete(machineID)
+	defer cs.ips.Delete(machineID)
 
 	m, err := cs.getMachine(machineID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		sshConn.Close()
 	}()
 
-	cs.sendIPMIData(sshSession, machineID, c)
+	cs.sendIPMIData(sshSession, machineID, ip)
 
 	cs.requestPTY(sshSession)
 
@@ -181,17 +181,17 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	return sshConn, sshClient, sshSession
 }
 
-func (cs *consoleServer) getConsole(machineID string) (string, error) {
-	c, ok := cs.consoles.Load(machineID)
+func (cs *consoleServer) getIP(machineID string) (string, error) {
+	ip, ok := cs.ips.Load(machineID)
 	if !ok {
-		return "", fmt.Errorf("unable to fetch requested machine %q", machineID)
+		return "", fmt.Errorf("unable to fetch IP of machine %q", machineID)
 	}
-	if c == nil {
-		cs.log.Sugar().Error("requested machine console is nil", "machineID", machineID)
-		return "", fmt.Errorf("no console available for machine %q", machineID)
+	if ip == nil {
+		cs.log.Sugar().Error("requested machine IP is nil", "machineID", machineID)
+		return "", fmt.Errorf("machine %q not addressable", machineID)
 	}
 
-	return c.(string), nil
+	return ip.(string), nil
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
@@ -224,13 +224,13 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 	return tcpConn
 }
 
-func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineCIDR string) {
+func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
 	var metalIPMI *models.V1MachineIPMI
 	if cs.spec.DevMode() {
 		user := "ADMIN" //TODO
 		pw := "ADMIN"
 		metalIPMI = &models.V1MachineIPMI{
-			Address:  &machineCIDR,
+			Address:  &machineIP,
 			User:     &user,
 			Password: &pw,
 		}
@@ -317,7 +317,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	if primaryIP == "" {
 		return nil, fmt.Errorf("unable to detect primary IP of machine:%s", machineID)
 	}
-	cs.consoles.Store(machineID, primaryIP)
+	cs.ips.Store(machineID, primaryIP)
 
 	var pubKeys []ssh.PublicKey
 	for _, key := range m.Allocation.SSHPubKeys {
