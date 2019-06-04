@@ -9,6 +9,12 @@ import (
 	"os"
 	"sync"
 
+	"github.com/go-openapi/strfmt"
+	"time"
+
+	"git.f-i-ts.de/cloud-native/metallib/security"
+	"github.com/go-openapi/runtime"
+
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"github.com/gliderlabs/ssh"
@@ -23,16 +29,30 @@ type consoleServer struct {
 	spec          *Specification
 	mutex         sync.RWMutex
 	ips           *sync.Map
+	hmac          security.HMACAuth
+	Auth          runtime.ClientAuthInfoWriter
 }
 
 func New(log *zap.Logger, spec *Specification) *consoleServer {
-	return &consoleServer{
+	cs := &consoleServer{
 		log:           log,
 		machineClient: newMachineClient(spec.MetalAPIAddress),
 		spec:          spec,
 		ips:           &sync.Map{},
 		mutex:         sync.RWMutex{},
 	}
+	cs.InitHMAC(spec.HMACKey)
+	return cs
+}
+
+func (cs *consoleServer) InitHMAC(hmacKey string) {
+	cs.hmac = security.NewHMACAuth("Metal-Edit", []byte(hmacKey))
+	cs.Auth = runtime.ClientAuthInfoWriterFunc(cs.auther)
+}
+
+func (cs *consoleServer) auther(rq runtime.ClientRequest, rg strfmt.Registry) error {
+	cs.hmac.AddAuthToClientRequest(rq, time.Now())
+	return nil
 }
 
 // Run starts ssh server and listen for console connections.
