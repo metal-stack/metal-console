@@ -15,7 +15,7 @@ func newMachineClient(url string) *machine.Client {
 func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse, error) {
 	findMachineParams := machine.NewFindMachineParams()
 	findMachineParams.ID = machineID
-	metalMachine, err := cs.machineClient.FindMachine(findMachineParams)
+	metalMachine, err := cs.machineClient.FindMachine(findMachineParams, cs.Auth)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse
 func (cs *consoleServer) getIPMIData(machineID string) (*models.V1MachineIPMI, error) {
 	ipmiDataParams := machine.NewIPMIDataParams()
 	ipmiDataParams.ID = machineID
-	ipmiData, err := cs.machineClient.IPMIData(ipmiDataParams)
+	ipmiData, err := cs.machineClient.IPMIData(ipmiDataParams, cs.Auth)
 	if err != nil {
 		return nil, err
 	}
