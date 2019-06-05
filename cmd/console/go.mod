@@ -1,7 +1,7 @@
 module git.f-i-ts.de/cloud-native/metal/metal-console
 
 require (
-	git.f-i-ts.de/cloud-native/metallib v0.0.0-20190604053222-b5da3ef09d9e
+	git.f-i-ts.de/cloud-native/metallib v0.0.0-20190605034929-e8cc1d344817
 	github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 // indirect
 	github.com/emicklei/go-restful-openapi v1.0.0 // indirect
 	github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568 // indirect
