@@ -12,8 +12,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"time"
 
-	"git.f-i-ts.de/cloud-native/metallib/security"
 	"github.com/go-openapi/runtime"
+	"github.com/metal-pod/security"
 
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
