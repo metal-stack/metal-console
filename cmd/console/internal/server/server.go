@@ -306,7 +306,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		primary := true
 		m = &models.V1MachineResponse{
 			Allocation: &models.V1MachineAllocation{
-				Networks: []*models.V1MachineNetwork{&models.V1MachineNetwork{Primary: &primary, Ips: []string{machineID}}},
+				Networks: []*models.V1MachineNetwork{{Primary: &primary, Ips: []string{machineID}}},
 				SSHPubKeys: []string{
 					string(bb),
 				},
@@ -326,11 +326,13 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	}
 
 	primaryIP := ""
-	for _, nw := range m.Allocation.Networks {
-		if *nw.Primary {
-			if len(nw.Ips) > 0 {
-				primaryIP = nw.Ips[0]
-				break
+	if m.Allocation != nil {
+		for _, nw := range m.Allocation.Networks {
+			if *nw.Primary {
+				if len(nw.Ips) > 0 {
+					primaryIP = nw.Ips[0]
+					break
+				}
 			}
 		}
 	}
