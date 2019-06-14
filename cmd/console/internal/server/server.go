@@ -4,15 +4,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	rt "github.com/go-openapi/runtime"
 	"io"
 	"io/ioutil"
-	"os"
 	"sync"
+	"runtime"
 
 	"github.com/go-openapi/strfmt"
 	"time"
 
-	"github.com/go-openapi/runtime"
 	"github.com/metal-pod/security"
 
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
@@ -30,7 +30,7 @@ type consoleServer struct {
 	mutex         sync.RWMutex
 	ips           *sync.Map
 	hmac          security.HMACAuth
-	Auth          runtime.ClientAuthInfoWriter
+	Auth          rt.ClientAuthInfoWriter
 }
 
 func New(log *zap.Logger, spec *Specification) *consoleServer {
@@ -47,10 +47,10 @@ func New(log *zap.Logger, spec *Specification) *consoleServer {
 
 func (cs *consoleServer) InitHMAC(hmacKey string) {
 	cs.hmac = security.NewHMACAuth("Metal-Edit", []byte(hmacKey))
-	cs.Auth = runtime.ClientAuthInfoWriterFunc(cs.auther)
+	cs.Auth = rt.ClientAuthInfoWriterFunc(cs.auther)
 }
 
-func (cs *consoleServer) auther(rq runtime.ClientRequest, rg strfmt.Registry) error {
+func (cs *consoleServer) auther(rq rt.ClientRequest, rg strfmt.Registry) error {
 	cs.hmac.AddAuthToClientRequest(rq, time.Now())
 	return nil
 }
@@ -66,7 +66,7 @@ func (cs *consoleServer) Run() {
 	hostKey, err := loadHostKey()
 	if err != nil {
 		cs.log.Sugar().Fatal("cannot load host key", "error", err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 	s.AddHostKey(hostKey)
 
@@ -92,6 +92,8 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
+	defer s.Exit(0)
+
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
 	tcpConn := cs.connectToManagementNetwork(mgmtServiceAddress)
@@ -115,7 +117,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	err = sshSession.Start("bash")
 	if err != nil {
 		cs.log.Sugar().Fatal(err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 
 	// wait till connection is closed
@@ -187,7 +189,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
 	if err != nil {
 		cs.log.Sugar().Fatal(err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 
 	sshClient := gossh.NewClient(sshConn, chans, reqs)
@@ -195,7 +197,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	sshSession, err := sshClient.NewSession()
 	if err != nil {
 		cs.log.Sugar().Fatal(err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 
 	return sshConn, sshClient, sshSession
@@ -259,20 +261,20 @@ func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, mach
 		metalIPMI, err = cs.getIPMIData(machineID)
 		if err != nil {
 			cs.log.Sugar().Fatal("Failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
-			os.Exit(-1)
+			runtime.Goexit()
 		}
 	}
 
 	ipmiData, err := metalIPMI.MarshalBinary()
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to marshal MetalIPMI", "error", err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 
 	err = sshSession.Setenv("LC_IPMI_DATA", string(ipmiData))
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to send IPMI data to BMC proxy", "error", err)
-		os.Exit(-1)
+		runtime.Goexit()
 	}
 }
 
