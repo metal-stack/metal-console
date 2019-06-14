@@ -369,7 +369,7 @@ func (cs *consoleServer) publicKeyFromPrivateKeyFile(file string) gossh.AuthMeth
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("id_rsa")
+	bb, err := ioutil.ReadFile("/host-key")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}

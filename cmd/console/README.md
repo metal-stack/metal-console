@@ -3,11 +3,11 @@
 Metal Console provides access to the serial console of metal machines.
 This is achieved by acting as a bridge between ssh and the console protocol of the concrete machine.
 It will support either libvirt based console access, which is used in the development environment.
-On real hardware ipmi based lanserv sol (Serial Over LAN) will be used.
+On real hardware ipmi based lanplus sol (Serial Over LAN) will be used.
 
 To access the console execute:
 
-```bash
+```
 
 ssh -i <private key> <uuid of the machine>@<hostname of metal-console server>
 

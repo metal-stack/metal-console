@@ -1,7 +1,7 @@
 FROM scratch
 
-LABEL maintainer FI-TS Devops <devops@f-i-ts.de>
+LABEL maintainer="FI-TS Devops <devops@f-i-ts.de>"
 
-COPY bin/metal-console id_rsa ca.crt client.crt client.pem /
+COPY bin/metal-console ca.crt client.crt client.pem /
 
 CMD ["/metal-console"]

@@ -18,6 +18,9 @@ services:
     container_name: ${BMC_PROXY_CONTAINER_NAME}
     networks:
       - metal
+    volumes:
+      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
+      - ${HOME}/.ssh/id_rsa:/host-key
     ports:
       - "${BMC_PROXY_PORT_HOST}:${BMC_PROXY_PORT}"
     environment:
@@ -44,7 +47,11 @@ services:
       - metal
     ports:
       - "${METAL_CONSOLE_PORT_HOST}:${METAL_CONSOLE_PORT}"
+    volumes:
+      - ${HOME}/.ssh/id_rsa:/host-key
+      - ${HOME}/.ssh/id_rsa.pub:/host-key.pub
     environment:
       METAL_CONSOLE_PORT: ${METAL_CONSOLE_PORT}
       METAL_CONSOLE_METAL_API_ADDRESS: ${METAL_API_ADDRESS}
       METAL_CONSOLE_BMC_REVERSE_PROXY_ADDRESS: bmc-reverse-proxy:${BMC_REVERSE_PROXY_PORT}
+      METAL_CONSOLE_PUBLIC_KEY: /host-key.pub
