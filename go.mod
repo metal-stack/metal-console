@@ -12,6 +12,7 @@ require (
 	github.com/go-openapi/swag v0.19.5
 	github.com/go-openapi/validate v0.19.2
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/kr/pty v1.1.8
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
 	github.com/metal-pod/security v0.0.0-20190605103437-319d1b2eca89
 	github.com/pkg/errors v0.8.1
