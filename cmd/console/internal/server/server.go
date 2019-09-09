@@ -4,14 +4,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	rt "github.com/go-openapi/runtime"
 	"io"
 	"io/ioutil"
-	"sync"
 	"runtime"
+	"sync"
+
+	rt "github.com/go-openapi/runtime"
+
+	"time"
 
 	"github.com/go-openapi/strfmt"
-	"time"
 
 	"github.com/metal-pod/security"
 
@@ -33,16 +35,20 @@ type consoleServer struct {
 	Auth          rt.ClientAuthInfoWriter
 }
 
-func New(log *zap.Logger, spec *Specification) *consoleServer {
+func New(log *zap.Logger, spec *Specification) (*consoleServer, error) {
+	client, err := newMachineClient(spec.MetalAPIURL)
+	if err != nil {
+		return nil, err
+	}
 	cs := &consoleServer{
 		log:           log,
-		machineClient: newMachineClient(spec.MetalAPIAddress),
+		machineClient: client,
 		spec:          spec,
 		ips:           &sync.Map{},
 		mutex:         sync.RWMutex{},
 	}
 	cs.InitHMAC(spec.HMACKey)
-	return cs
+	return cs, nil
 }
 
 func (cs *consoleServer) InitHMAC(hmacKey string) {
@@ -305,10 +311,10 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 			cs.log.Sugar().Error("unable to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
-		primary := true
+		private := true
 		m = &models.V1MachineResponse{
 			Allocation: &models.V1MachineAllocation{
-				Networks: []*models.V1MachineNetwork{{Primary: &primary, Ips: []string{machineID}}},
+				Networks: []*models.V1MachineNetwork{{Private: &private, Ips: []string{machineID}}},
 				SSHPubKeys: []string{
 					string(bb),
 				},
@@ -327,21 +333,21 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		}
 	}
 
-	primaryIP := ""
+	privateIP := ""
 	if m.Allocation != nil {
 		for _, nw := range m.Allocation.Networks {
-			if *nw.Primary {
+			if *nw.Private {
 				if len(nw.Ips) > 0 {
-					primaryIP = nw.Ips[0]
+					privateIP = nw.Ips[0]
 					break
 				}
 			}
 		}
 	}
-	if primaryIP == "" {
+	if privateIP == "" {
 		return nil, fmt.Errorf("unable to detect primary IP of machine:%s", machineID)
 	}
-	cs.ips.Store(machineID, primaryIP)
+	cs.ips.Store(machineID, privateIP)
 
 	var pubKeys []ssh.PublicKey
 	for _, key := range m.Allocation.SSHPubKeys {
@@ -353,21 +359,6 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	}
 
 	return pubKeys, nil
-}
-
-func (cs *consoleServer) publicKeyFromPrivateKeyFile(file string) gossh.AuthMethod {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		cs.log.Sugar().Error(err)
-		return nil
-	}
-
-	privKey, err := gossh.ParsePrivateKey(buffer)
-	if err != nil {
-		cs.log.Sugar().Error(err)
-		return nil
-	}
-	return gossh.PublicKeys(privKey)
 }
 
 func loadHostKey() (gossh.Signer, error) {

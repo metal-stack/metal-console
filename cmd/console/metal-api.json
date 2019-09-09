@@ -14,6 +14,7 @@
     },
     "version": "1.0.0"
   },
+  "basePath": "/",
   "paths": {
     "/v1/firewall": {
       "get": {
@@ -75,6 +76,48 @@
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/v1.FirewallResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/firewall/find": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "firewall"
+        ],
+        "summary": "find firewalls by multiple criteria",
+        "operationId": "findFirewalls",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.FirewallFindRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.FirewallResponse"
+              }
             }
           },
           "default": {
@@ -431,7 +474,7 @@
         "tags": [
           "ip"
         ],
-        "summary": "allocate an ip in the given network for a project.",
+        "summary": "allocate an ip in the given network.",
         "operationId": "allocateIP",
         "parameters": [
           {
@@ -459,8 +502,8 @@
         }
       }
     },
-    "/v1/ip/{id}": {
-      "get": {
+    "/v1/ip/allocate/{ip}": {
+      "post": {
         "consumes": [
           "application/json"
         ],
@@ -470,8 +513,96 @@
         "tags": [
           "ip"
         ],
-        "summary": "get ip by id",
-        "operationId": "findIP",
+        "summary": "allocate a specific ip in the given network.",
+        "operationId": "allocateSpecificIP",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "ip to try to allocate",
+            "name": "ip",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.IPAllocateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/v1.IPResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/ip/find": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "ip"
+        ],
+        "summary": "get all ips that match given properties",
+        "operationId": "findIPs",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.IPFindRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.IPResponse"
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/ip/release/{id}": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "ip"
+        ],
+        "summary": "releases an ip",
+        "operationId": "releaseIP",
         "parameters": [
           {
             "type": "string",
@@ -495,8 +626,10 @@
             }
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/v1/ip/{id}": {
+      "get": {
         "consumes": [
           "application/json"
         ],
@@ -506,8 +639,8 @@
         "tags": [
           "ip"
         ],
-        "summary": "deletes an ip and returns the deleted entity",
-        "operationId": "deleteIP",
+        "summary": "get ip by id",
+        "operationId": "findIP",
         "parameters": [
           {
             "type": "string",
@@ -605,7 +738,7 @@
       }
     },
     "/v1/machine/find": {
-      "get": {
+      "post": {
         "consumes": [
           "application/json"
         ],
@@ -615,14 +748,16 @@
         "tags": [
           "machine"
         ],
-        "summary": "search machines",
-        "operationId": "searchMachine",
+        "summary": "find machines by multiple criteria",
+        "operationId": "findMachines",
         "parameters": [
           {
-            "type": "string",
-            "description": "one of the MAC address of the machine",
-            "name": "mac",
-            "in": "query"
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.MachineFindRequest"
+            }
           }
         ],
         "responses": {
@@ -663,7 +798,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/service.emptyBody"
+              "$ref": "#/definitions/v1.EmptyBody"
             }
           }
         ],
@@ -748,6 +883,52 @@
             "name": "id",
             "in": "path",
             "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.MachineResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/machine/{id}/chassis-identify-led-state": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "machine"
+        ],
+        "summary": "set the state of a chassis identify LED",
+        "operationId": "setChassisIdentifyLEDState",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the machine",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.ChassisIdentifyLEDState"
+            }
           }
         ],
         "responses": {
@@ -996,7 +1177,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/service.emptyBody"
+              "$ref": "#/definitions/v1.EmptyBody"
             }
           }
         ],
@@ -1004,7 +1185,159 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.MachineAllocation"
+              "$ref": "#/definitions/v1.MachineResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/machine/{id}/power/chassis-identify-led-off/{description}": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "machine"
+        ],
+        "summary": "sends a power-off to the chassis identify LED",
+        "operationId": "chassisIdentifyLEDOff",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the machine",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "reason why the chassis identify LED has been turned off",
+            "name": "description",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.EmptyBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.MachineResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/machine/{id}/power/chassis-identify-led-on": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "machine"
+        ],
+        "summary": "sends a power-on to the chassis identify LED",
+        "operationId": "chassisIdentifyLEDOn",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the machine",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.EmptyBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.MachineResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/machine/{id}/power/chassis-identify-led-on/{description}": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "machine"
+        ],
+        "summary": "sends a power-on to the chassis identify LED",
+        "operationId": "chassisIdentifyLEDOn",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the machine",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "reason why the chassis identify LED has been turned on",
+            "name": "description",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.EmptyBody"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.MachineResponse"
             }
           },
           "default": {
@@ -1042,7 +1375,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/service.emptyBody"
+              "$ref": "#/definitions/v1.EmptyBody"
             }
           }
         ],
@@ -1050,7 +1383,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.MachineAllocation"
+              "$ref": "#/definitions/v1.MachineResponse"
             }
           },
           "default": {
@@ -1088,7 +1421,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/service.emptyBody"
+              "$ref": "#/definitions/v1.EmptyBody"
             }
           }
         ],
@@ -1096,7 +1429,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.MachineAllocation"
+              "$ref": "#/definitions/v1.MachineResponse"
             }
           },
           "default": {
@@ -1134,7 +1467,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/service.emptyBody"
+              "$ref": "#/definitions/v1.EmptyBody"
             }
           }
         ],
@@ -1142,7 +1475,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.MachineAllocation"
+              "$ref": "#/definitions/v1.MachineResponse"
             }
           },
           "default": {
@@ -1226,7 +1559,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/v1.MachineWaitResponse"
+              "$ref": "#/definitions/v1.MachineResponse"
             }
           },
           "504": {
@@ -1285,7 +1618,7 @@
         "tags": [
           "network"
         ],
-        "summary": "create an network. if the given ID already exists a conflict is returned",
+        "summary": "create a network. if the given ID already exists a conflict is returned",
         "operationId": "createNetwork",
         "parameters": [
           {
@@ -1328,7 +1661,7 @@
         "tags": [
           "network"
         ],
-        "summary": "updates an network. if the network was changed since this one was read, a conflict is returned",
+        "summary": "updates a network. if the network was changed since this one was read, a conflict is returned",
         "operationId": "updateNetwork",
         "parameters": [
           {
@@ -1338,6 +1671,137 @@
             "schema": {
               "$ref": "#/definitions/v1.NetworkUpdateRequest"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.NetworkResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/acquire": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "network"
+        ],
+        "summary": "acquires a child network from a partition's private super network",
+        "operationId": "acquireChildNetwork",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.NetworkAcquireRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/v1.NetworkResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/find": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "network"
+        ],
+        "summary": "get all networks that match given properties",
+        "operationId": "findNetworks",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.NetworkFindRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.NetworkResponse"
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/network/release/{id}": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "network"
+        ],
+        "summary": "releases a child network",
+        "operationId": "releaseChildNetwork",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the network",
+            "name": "id",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {
@@ -1409,7 +1873,7 @@
         "tags": [
           "network"
         ],
-        "summary": "deletes an network and returns the deleted entity",
+        "summary": "deletes a network and returns the deleted entity",
         "operationId": "deleteNetwork",
         "parameters": [
           {
@@ -1554,6 +2018,38 @@
         }
       }
     },
+    "/v1/partition/capacity": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Partition"
+        ],
+        "summary": "get Partition capacity",
+        "operationId": "partitionCapacity",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.PartitionCapacity"
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
     "/v1/partition/{id}": {
       "get": {
         "consumes": [
@@ -1617,6 +2113,240 @@
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/v1.PartitionResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/project": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "get all projects",
+        "operationId": "listProjects",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.ProjectResponse"
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "create a project. if the given ID already exists a conflict is returned",
+        "operationId": "createProject",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectCreateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "updates a project. if the project was changed since this one was read, a conflict is returned",
+        "operationId": "updateProject",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/project/find": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "get all projects that match given properties",
+        "operationId": "findProjects",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectFindRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v1.ProjectResponse"
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/v1/project/{id}": {
+      "get": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "get project by id",
+        "operationId": "findProject",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the project",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectResponse"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "project"
+        ],
+        "summary": "deletes a project and returns the deleted entity",
+        "operationId": "deleteProject",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "identifier of the project",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/v1.ProjectResponse"
             }
           },
           "default": {
@@ -1765,7 +2495,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/metal.MachineHardware"
+              "$ref": "#/definitions/v1.MachineHardwareExtended"
             }
           }
         ],
@@ -1773,16 +2503,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.SizeMatchingLog"
-            }
-          },
-          "404": {
-            "description": "NotFound",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/metal.SizeMatchingLog"
-              }
+              "$ref": "#/definitions/v1.SizeMatchingLog"
             }
           },
           "default": {
@@ -1887,8 +2608,14 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/metal.Switch"
+                "$ref": "#/definitions/v1.SwitchResponse"
               }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/httperrors.HTTPErrorResponse"
             }
           }
         }
@@ -1913,7 +2640,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/metal.RegisterSwitch"
+              "$ref": "#/definitions/v1.SwitchRegisterRequest"
             }
           }
         ],
@@ -1921,17 +2648,17 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.Switch"
+              "$ref": "#/definitions/v1.SwitchResponse"
             }
           },
           "201": {
             "description": "Created",
             "schema": {
-              "$ref": "#/definitions/metal.Switch"
+              "$ref": "#/definitions/v1.SwitchResponse"
             }
           },
-          "409": {
-            "description": "Conflict",
+          "default": {
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/httperrors.HTTPErrorResponse"
             }
@@ -1965,11 +2692,11 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.Switch"
+              "$ref": "#/definitions/v1.SwitchResponse"
             }
           },
-          "404": {
-            "description": "Not Found",
+          "default": {
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/httperrors.HTTPErrorResponse"
             }
@@ -2001,11 +2728,11 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/metal.Switch"
+              "$ref": "#/definitions/v1.SwitchResponse"
             }
           },
-          "404": {
-            "description": "Not Found",
+          "default": {
+            "description": "Error",
             "schema": {
               "$ref": "#/definitions/httperrors.HTTPErrorResponse"
             }
@@ -2055,429 +2782,6 @@
         }
       }
     },
-    "metal.BlockDevice": {
-      "required": [
-        "Name",
-        "Size"
-      ],
-      "properties": {
-        "Name": {
-          "type": "string"
-        },
-        "Size": {
-          "type": "integer"
-        }
-      }
-    },
-    "metal.BootConfiguration": {
-      "required": [
-        "ImageURL",
-        "KernelURL",
-        "CommandLine"
-      ],
-      "properties": {
-        "CommandLine": {
-          "type": "string"
-        },
-        "ImageURL": {
-          "type": "string"
-        },
-        "KernelURL": {
-          "type": "string"
-        }
-      }
-    },
-    "metal.Connection": {
-      "required": [
-        "nic"
-      ],
-      "properties": {
-        "machine_id": {
-          "description": "the machine id of the machine connected to the nic",
-          "type": "string"
-        },
-        "nic": {
-          "description": "a network interface on the switch",
-          "$ref": "#/definitions/metal.Nic"
-        }
-      }
-    },
-    "metal.Constraint": {
-      "required": [
-        "Type",
-        "Min",
-        "Max"
-      ],
-      "properties": {
-        "Max": {
-          "type": "integer"
-        },
-        "Min": {
-          "type": "integer"
-        },
-        "Type": {
-          "type": "string"
-        }
-      }
-    },
-    "metal.ConstraintMatchingLog": {
-      "required": [
-        "match"
-      ],
-      "properties": {
-        "constraint": {
-          "$ref": "#/definitions/metal.Constraint"
-        },
-        "log": {
-          "type": "string"
-        },
-        "match": {
-          "type": "boolean"
-        }
-      }
-    },
-    "metal.MachineAllocation": {
-      "required": [
-        "Created",
-        "Name",
-        "Description",
-        "LastPing",
-        "Tenant",
-        "Project",
-        "ImageID",
-        "MachineNetworks",
-        "Hostname",
-        "SSHPubKeys",
-        "UserData",
-        "ConsolePassword",
-        "PhoneHomeToken",
-        "Succeeded"
-      ],
-      "properties": {
-        "ConsolePassword": {
-          "type": "string"
-        },
-        "Created": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "Description": {
-          "type": "string"
-        },
-        "Hostname": {
-          "type": "string"
-        },
-        "ImageID": {
-          "type": "string"
-        },
-        "LastPing": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "MachineNetworks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.MachineNetwork"
-          }
-        },
-        "Name": {
-          "type": "string"
-        },
-        "PhoneHomeToken": {
-          "type": "string"
-        },
-        "Project": {
-          "type": "string"
-        },
-        "SSHPubKeys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "Succeeded": {
-          "type": "boolean"
-        },
-        "Tenant": {
-          "type": "string"
-        },
-        "UserData": {
-          "type": "string"
-        }
-      }
-    },
-    "metal.MachineHardware": {
-      "required": [
-        "Memory",
-        "CPUCores",
-        "Nics",
-        "Disks"
-      ],
-      "properties": {
-        "CPUCores": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "Disks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.BlockDevice"
-          }
-        },
-        "Memory": {
-          "type": "integer"
-        },
-        "Nics": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.Nic"
-          }
-        }
-      }
-    },
-    "metal.MachineNetwork": {
-      "required": [
-        "NetworkID",
-        "Prefixes",
-        "IPs",
-        "DestinationPrefixes",
-        "Vrf",
-        "Primary",
-        "ASN",
-        "Nat",
-        "Underlay"
-      ],
-      "properties": {
-        "ASN": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "DestinationPrefixes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "IPs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "Nat": {
-          "type": "boolean"
-        },
-        "NetworkID": {
-          "type": "string"
-        },
-        "Prefixes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "Primary": {
-          "type": "boolean"
-        },
-        "Underlay": {
-          "type": "boolean"
-        },
-        "Vrf": {
-          "type": "integer",
-          "format": "integer"
-        }
-      }
-    },
-    "metal.Nic": {
-      "required": [
-        "mac",
-        "name",
-        "neighbors"
-      ],
-      "properties": {
-        "mac": {
-          "description": "the mac address of this network interface",
-          "type": "string"
-        },
-        "name": {
-          "description": "the name of this network interface",
-          "type": "string"
-        },
-        "neighbors": {
-          "description": "the neighbors visible to this network interface",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.Nic"
-          }
-        },
-        "vrf": {
-          "description": "the vrf this network interface is part of",
-          "type": "string"
-        }
-      }
-    },
-    "metal.Partition": {
-      "required": [
-        "id",
-        "BootConfiguration",
-        "MgmtServiceAddress",
-        "ProjectNetworkPrefixLength"
-      ],
-      "properties": {
-        "BootConfiguration": {
-          "$ref": "#/definitions/metal.BootConfiguration"
-        },
-        "MgmtServiceAddress": {
-          "type": "string"
-        },
-        "ProjectNetworkPrefixLength": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "changed": {
-          "description": "the last changed timestamp",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
-        "created": {
-          "description": "the creation time of this entity",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
-        "description": {
-          "description": "a description for this entity",
-          "type": "string"
-        },
-        "id": {
-          "description": "a unique ID",
-          "type": "string",
-          "uniqueItems": true
-        },
-        "name": {
-          "description": "the readable name",
-          "type": "string"
-        }
-      }
-    },
-    "metal.RegisterSwitch": {
-      "required": [
-        "id",
-        "nics",
-        "partition_id",
-        "rack_id"
-      ],
-      "properties": {
-        "id": {
-          "description": "a unique ID",
-          "type": "string",
-          "uniqueItems": true
-        },
-        "nics": {
-          "description": "the list of network interfaces on the switch",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.Nic"
-          }
-        },
-        "partition_id": {
-          "description": "the id of the partition in which this switch is located",
-          "type": "string"
-        },
-        "rack_id": {
-          "description": "the id of the rack in which this switch is located",
-          "type": "string"
-        }
-      }
-    },
-    "metal.SizeMatchingLog": {
-      "required": [
-        "name",
-        "match"
-      ],
-      "properties": {
-        "constraints": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.ConstraintMatchingLog"
-          }
-        },
-        "log": {
-          "type": "string"
-        },
-        "match": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "metal.Switch": {
-      "description": "A switch that can register at the api.",
-      "required": [
-        "id",
-        "nics",
-        "connections",
-        "partition_id",
-        "rack_id",
-        "partition"
-      ],
-      "properties": {
-        "changed": {
-          "description": "the last changed timestamp",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
-        "connections": {
-          "description": "a connection between a switch port and a machine",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.Connection"
-          }
-        },
-        "created": {
-          "description": "the creation time of this entity",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
-        "description": {
-          "description": "a description for this entity",
-          "type": "string"
-        },
-        "id": {
-          "description": "a unique ID",
-          "type": "string",
-          "uniqueItems": true
-        },
-        "name": {
-          "description": "the readable name",
-          "type": "string"
-        },
-        "nics": {
-          "description": "the list of network interfaces on the switch",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/metal.Nic"
-          }
-        },
-        "partition": {
-          "description": "the partition in which this switch is located",
-          "$ref": "#/definitions/metal.Partition"
-        },
-        "partition_id": {
-          "description": "the id of the partition in which this switch is located",
-          "type": "string"
-        },
-        "rack_id": {
-          "description": "the id of the rack in which this switch is located",
-          "type": "string"
-        }
-      }
-    },
     "rest.status": {
       "required": [
         "message"
@@ -2514,16 +2818,51 @@
         }
       }
     },
-    "service.emptyBody": {},
+    "v1.BGPFilter": {
+      "required": [
+        "cidrs"
+      ],
+      "properties": {
+        "cidrs": {
+          "description": "the cidr addresses that are allowed to be announced at this switch port",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "vnis": {
+          "description": "the virtual networks that are exposed at this switch port",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1.ChassisIdentifyLEDState": {
+      "required": [
+        "value",
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "description": "a description why this chassis identify LED is in the given state",
+          "type": "string"
+        },
+        "value": {
+          "description": "the state of this chassis identify LED. empty means LED-OFF",
+          "type": "string"
+        }
+      }
+    },
+    "v1.EmptyBody": {},
     "v1.FirewallCreateRequest": {
       "required": [
-        "tenant",
-        "projectid",
         "partitionid",
         "sizeid",
         "imageid",
         "ssh_pub_keys",
-        "networks"
+        "projectid"
       ],
       "properties": {
         "description": {
@@ -2542,15 +2881,22 @@
           "description": "the image id to assign this machine to",
           "type": "string"
         },
+        "ips": {
+          "description": "the ips to attach to this machine additionally",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "name": {
           "description": "a readable name for this entity",
           "type": "string"
         },
         "networks": {
-          "description": "the networks of this firewall",
+          "description": "the networks that this machine will be placed in.",
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/v1.MachineAllocationNetwork"
           }
         },
         "partitionid": {
@@ -2579,10 +2925,6 @@
             "type": "string"
           }
         },
-        "tenant": {
-          "description": "the name of the owning tenant",
-          "type": "string"
-        },
         "user_data": {
           "description": "cloud-init.io compatible userdata must be base64 encoded",
           "type": "string"
@@ -2593,20 +2935,250 @@
         }
       }
     },
+    "v1.FirewallFindRequest": {
+      "required": [
+        "id",
+        "allocation_image_id",
+        "network_nat",
+        "nics_vrfs",
+        "fru_board_mfg",
+        "network_ids",
+        "partition_id",
+        "network_destination_prefixes",
+        "nics_neighbor_mac_addresses",
+        "disk_sizes",
+        "sizeid",
+        "nics_neighbor_names",
+        "network_private",
+        "hardware_cpu_cores",
+        "allocation_succeeded",
+        "allocation_project",
+        "rackid",
+        "tags",
+        "nics_mac_addresses",
+        "fru_chassis_part_serial",
+        "allocation_name",
+        "network_vrfs",
+        "hardware_memory",
+        "ipmi_interface",
+        "fru_chassis_part_number",
+        "fru_board_mfg_serial",
+        "name",
+        "ipmi_mac_address",
+        "fru_product_part_number",
+        "disk_names",
+        "network_underlay",
+        "nics_neighbor_vrfs",
+        "state_value",
+        "liveliness",
+        "network_prefixes",
+        "fru_product_serial",
+        "network_ips",
+        "fru_product_manufacturer",
+        "ipmi_address",
+        "allocation_hostname",
+        "fru_board_part_number",
+        "nics_names",
+        "network_asns",
+        "ipmi_user"
+      ],
+      "properties": {
+        "allocation_hostname": {
+          "type": "string"
+        },
+        "allocation_image_id": {
+          "type": "string"
+        },
+        "allocation_name": {
+          "type": "string"
+        },
+        "allocation_project": {
+          "type": "string"
+        },
+        "allocation_succeeded": {
+          "type": "boolean"
+        },
+        "disk_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disk_sizes": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "fru_board_mfg": {
+          "type": "string"
+        },
+        "fru_board_mfg_serial": {
+          "type": "string"
+        },
+        "fru_board_part_number": {
+          "type": "string"
+        },
+        "fru_chassis_part_number": {
+          "type": "string"
+        },
+        "fru_chassis_part_serial": {
+          "type": "string"
+        },
+        "fru_product_manufacturer": {
+          "type": "string"
+        },
+        "fru_product_part_number": {
+          "type": "string"
+        },
+        "fru_product_serial": {
+          "type": "string"
+        },
+        "hardware_cpu_cores": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "hardware_memory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ipmi_address": {
+          "type": "string"
+        },
+        "ipmi_interface": {
+          "type": "string"
+        },
+        "ipmi_mac_address": {
+          "type": "string"
+        },
+        "ipmi_user": {
+          "type": "string"
+        },
+        "liveliness": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "network_asns": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "network_destination_prefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_nat": {
+          "type": "boolean"
+        },
+        "network_prefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_private": {
+          "type": "boolean"
+        },
+        "network_underlay": {
+          "type": "boolean"
+        },
+        "network_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "nics_mac_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_mac_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "partition_id": {
+          "type": "string"
+        },
+        "rackid": {
+          "type": "string"
+        },
+        "sizeid": {
+          "type": "string"
+        },
+        "state_value": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v1.FirewallResponse": {
       "required": [
-        "rackid",
-        "changed",
-        "allocation",
-        "hardware",
-        "liveliness",
-        "created",
-        "partition",
-        "events",
-        "tags",
-        "id",
         "size",
-        "state"
+        "state",
+        "liveliness",
+        "tags",
+        "allocation",
+        "partition",
+        "rackid",
+        "created",
+        "events",
+        "changed",
+        "id",
+        "ledstate",
+        "hardware"
       ],
       "properties": {
         "allocation": {
@@ -2641,6 +3213,10 @@
           "description": "the unique ID of this entity",
           "type": "string",
           "uniqueItems": true
+        },
+        "ledstate": {
+          "description": "the state of this chassis identify LED",
+          "$ref": "#/definitions/v1.ChassisIdentifyLEDState"
         },
         "liveliness": {
           "description": "the liveliness of this machine",
@@ -2698,6 +3274,37 @@
         },
         "projectid": {
           "description": "the project this ip address belongs to",
+          "type": "string"
+        }
+      }
+    },
+    "v1.IPFindRequest": {
+      "required": [
+        "ipaddress",
+        "networkprefix",
+        "networkid",
+        "machineid",
+        "projectid"
+      ],
+      "properties": {
+        "ipaddress": {
+          "description": "the address (ipv4 or ipv6) of this ip",
+          "type": "string"
+        },
+        "machineid": {
+          "description": "the machine this ip address belongs to, empty if not strong coupled",
+          "type": "string"
+        },
+        "networkid": {
+          "description": "the network this ip allocate request address belongs to",
+          "type": "string"
+        },
+        "networkprefix": {
+          "description": "the prefix of the network this ip address belongs to",
+          "type": "string"
+        },
+        "projectid": {
+          "description": "the project this ip address belongs to, empty if not strong coupled",
           "type": "string"
         }
       }
@@ -2886,7 +3493,6 @@
     },
     "v1.MachineAllocateRequest": {
       "required": [
-        "tenant",
         "projectid",
         "partitionid",
         "sizeid",
@@ -2906,9 +3512,23 @@
           "description": "the image id to assign this machine to",
           "type": "string"
         },
+        "ips": {
+          "description": "the ips to attach to this machine additionally",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "name": {
           "description": "a readable name for this entity",
           "type": "string"
+        },
+        "networks": {
+          "description": "the networks that this machine will be placed in.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.MachineAllocationNetwork"
+          }
         },
         "partitionid": {
           "description": "the partition id to assign this machine to",
@@ -2936,10 +3556,6 @@
             "type": "string"
           }
         },
-        "tenant": {
-          "description": "the name of the owning tenant",
-          "type": "string"
-        },
         "user_data": {
           "description": "cloud-init.io compatible userdata must be base64 encoded",
           "type": "string"
@@ -2954,7 +3570,6 @@
       "required": [
         "created",
         "name",
-        "tenant",
         "project",
         "networks",
         "hostname",
@@ -2984,12 +3599,6 @@
           "$ref": "#/definitions/v1.ImageResponse",
           "readOnly": true
         },
-        "last_ping": {
-          "description": "the timestamp of the last phone home call/ping from the machine",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
         "name": {
           "description": "the name of the machine",
           "type": "string"
@@ -3002,7 +3611,7 @@
           }
         },
         "project": {
-          "description": "the project that this machine is assigned to",
+          "description": "the project id that this machine is assigned to",
           "type": "string"
         },
         "ssh_pub_keys": {
@@ -3016,12 +3625,24 @@
           "description": "if the allocation of the machine was successful, this is set to true",
           "type": "boolean"
         },
-        "tenant": {
-          "description": "the tenant that this machine is assigned to",
-          "type": "string"
-        },
         "user_data": {
           "description": "userdata to execute post installation tasks",
+          "type": "string"
+        }
+      }
+    },
+    "v1.MachineAllocationNetwork": {
+      "required": [
+        "networkid",
+        "autoacquire"
+      ],
+      "properties": {
+        "autoacquire": {
+          "description": "will automatically acquire an ip in this network if set to true, default is true",
+          "type": "boolean"
+        },
+        "networkid": {
+          "description": "the id of the network that this machine will be placed in",
           "type": "string"
         }
       }
@@ -3050,6 +3671,235 @@
         "console_password": {
           "description": "the console password which was generated while provisioning",
           "type": "string"
+        }
+      }
+    },
+    "v1.MachineFindRequest": {
+      "required": [
+        "network_prefixes",
+        "hardware_memory",
+        "ipmi_mac_address",
+        "partition_id",
+        "tags",
+        "network_ips",
+        "network_vrfs",
+        "ipmi_user",
+        "fru_chassis_part_number",
+        "fru_board_mfg_serial",
+        "id",
+        "allocation_image_id",
+        "network_destination_prefixes",
+        "hardware_cpu_cores",
+        "nics_names",
+        "ipmi_address",
+        "fru_board_part_number",
+        "rackid",
+        "network_nat",
+        "fru_chassis_part_serial",
+        "nics_neighbor_names",
+        "fru_product_serial",
+        "sizeid",
+        "liveliness",
+        "allocation_succeeded",
+        "network_private",
+        "network_asns",
+        "nics_neighbor_mac_addresses",
+        "nics_neighbor_vrfs",
+        "state_value",
+        "ipmi_interface",
+        "fru_board_mfg",
+        "fru_product_part_number",
+        "name",
+        "allocation_hostname",
+        "nics_mac_addresses",
+        "nics_vrfs",
+        "fru_product_manufacturer",
+        "allocation_name",
+        "allocation_project",
+        "network_ids",
+        "network_underlay",
+        "disk_names",
+        "disk_sizes"
+      ],
+      "properties": {
+        "allocation_hostname": {
+          "type": "string"
+        },
+        "allocation_image_id": {
+          "type": "string"
+        },
+        "allocation_name": {
+          "type": "string"
+        },
+        "allocation_project": {
+          "type": "string"
+        },
+        "allocation_succeeded": {
+          "type": "boolean"
+        },
+        "disk_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "disk_sizes": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "fru_board_mfg": {
+          "type": "string"
+        },
+        "fru_board_mfg_serial": {
+          "type": "string"
+        },
+        "fru_board_part_number": {
+          "type": "string"
+        },
+        "fru_chassis_part_number": {
+          "type": "string"
+        },
+        "fru_chassis_part_serial": {
+          "type": "string"
+        },
+        "fru_product_manufacturer": {
+          "type": "string"
+        },
+        "fru_product_part_number": {
+          "type": "string"
+        },
+        "fru_product_serial": {
+          "type": "string"
+        },
+        "hardware_cpu_cores": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "hardware_memory": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ipmi_address": {
+          "type": "string"
+        },
+        "ipmi_interface": {
+          "type": "string"
+        },
+        "ipmi_mac_address": {
+          "type": "string"
+        },
+        "ipmi_user": {
+          "type": "string"
+        },
+        "liveliness": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "network_asns": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "network_destination_prefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_nat": {
+          "type": "boolean"
+        },
+        "network_prefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "network_private": {
+          "type": "boolean"
+        },
+        "network_underlay": {
+          "type": "boolean"
+        },
+        "network_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "nics_mac_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_mac_addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_neighbor_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nics_vrfs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "partition_id": {
+          "type": "string"
+        },
+        "rackid": {
+          "type": "string"
+        },
+        "sizeid": {
+          "type": "string"
+        },
+        "state_value": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -3094,8 +3944,8 @@
       "required": [
         "memory",
         "cpu_cores",
-        "nics",
-        "disks"
+        "disks",
+        "nics"
       ],
       "properties": {
         "cpu_cores": {
@@ -3119,6 +3969,39 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1.MachineNic"
+          }
+        }
+      }
+    },
+    "v1.MachineHardwareExtended": {
+      "required": [
+        "memory",
+        "cpu_cores",
+        "disks",
+        "nics"
+      ],
+      "properties": {
+        "cpu_cores": {
+          "description": "the number of cpu cores",
+          "type": "integer",
+          "format": "int32"
+        },
+        "disks": {
+          "description": "the list of block devices of this machine",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.MachineBlockDevice"
+          }
+        },
+        "memory": {
+          "description": "the total memory of the machine",
+          "type": "integer"
+        },
+        "nics": {
+          "description": "the list of network interfaces of this machine with extended information",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.MachineNicExtended"
           }
         }
       }
@@ -3186,7 +4069,7 @@
         "ips",
         "vrf",
         "asn",
-        "primary",
+        "private",
         "nat",
         "destinationprefixes",
         "underlay"
@@ -3226,8 +4109,8 @@
             "type": "string"
           }
         },
-        "primary": {
-          "description": "indicates whether this network is the primary project network",
+        "private": {
+          "description": "indicates whether this network is the private network of this machine",
           "type": "boolean"
         },
         "underlay": {
@@ -3242,6 +4125,22 @@
       }
     },
     "v1.MachineNic": {
+      "required": [
+        "mac",
+        "name"
+      ],
+      "properties": {
+        "mac": {
+          "description": "the mac address of this network interface",
+          "type": "string"
+        },
+        "name": {
+          "description": "the name of this network interface",
+          "type": "string"
+        }
+      }
+    },
+    "v1.MachineNicExtended": {
       "required": [
         "mac",
         "name",
@@ -3260,7 +4159,7 @@
           "description": "the neighbors visible to this network interface",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/v1.MachineNic"
+            "$ref": "#/definitions/v1.MachineNicExtended"
           }
         }
       }
@@ -3323,7 +4222,7 @@
       "properties": {
         "hardware": {
           "description": "the hardware of this machine",
-          "$ref": "#/definitions/v1.MachineHardware"
+          "$ref": "#/definitions/v1.MachineHardwareExtended"
         },
         "ipmi": {
           "description": "the ipmi access infos",
@@ -3353,17 +4252,18 @@
     "v1.MachineResponse": {
       "required": [
         "id",
-        "events",
+        "rackid",
         "size",
-        "hardware",
-        "allocation",
         "state",
-        "liveliness",
+        "events",
         "tags",
         "partition",
-        "rackid",
-        "created",
-        "changed"
+        "hardware",
+        "allocation",
+        "ledstate",
+        "liveliness",
+        "changed",
+        "created"
       ],
       "properties": {
         "allocation": {
@@ -3398,6 +4298,10 @@
           "description": "the unique ID of this entity",
           "type": "string",
           "uniqueItems": true
+        },
+        "ledstate": {
+          "description": "the state of this chassis identify LED",
+          "$ref": "#/definitions/v1.ChassisIdentifyLEDState"
         },
         "liveliness": {
           "description": "the liveliness of this machine",
@@ -3451,103 +4355,46 @@
         }
       }
     },
-    "v1.MachineWaitResponse": {
+    "v1.NetworkAcquireRequest": {
       "required": [
-        "created",
-        "partition",
-        "events",
-        "size",
-        "allocation",
-        "state",
-        "tags",
-        "changed",
-        "id",
-        "rackid",
-        "hardware",
-        "liveliness",
-        "phone_home_token"
+        "labels"
       ],
       "properties": {
-        "allocation": {
-          "description": "the allocation data of an allocated machine",
-          "$ref": "#/definitions/v1.MachineAllocation"
-        },
-        "changed": {
-          "description": "the last changed timestamp of this entity",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
-        "created": {
-          "description": "the creation time of this entity",
-          "type": "string",
-          "format": "date-time",
-          "readOnly": true
-        },
         "description": {
           "description": "a description for this entity",
           "type": "string"
         },
-        "events": {
-          "description": "recent events of this machine during provisioning",
-          "$ref": "#/definitions/v1.MachineRecentProvisioningEvents"
-        },
-        "hardware": {
-          "description": "the hardware of this machine",
-          "$ref": "#/definitions/v1.MachineHardware"
-        },
-        "id": {
-          "description": "the unique ID of this entity",
-          "type": "string",
-          "uniqueItems": true
-        },
-        "liveliness": {
-          "description": "the liveliness of this machine",
-          "type": "string"
+        "labels": {
+          "description": "free labels that you associate with this network.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "name": {
           "description": "a readable name for this entity",
           "type": "string"
         },
-        "partition": {
-          "description": "the partition assigned to this machine",
-          "$ref": "#/definitions/v1.PartitionResponse",
-          "readOnly": true
-        },
-        "phone_home_token": {
+        "partitionid": {
+          "description": "the partition this network belongs to",
           "type": "string"
         },
-        "rackid": {
-          "description": "the rack assigned to this machine",
-          "type": "string",
-          "readOnly": true
-        },
-        "size": {
-          "description": "the size of this machine",
-          "$ref": "#/definitions/v1.SizeResponse",
-          "readOnly": true
-        },
-        "state": {
-          "description": "the state of this machine",
-          "$ref": "#/definitions/v1.MachineState"
-        },
-        "tags": {
-          "description": "tags for this machine",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "projectid": {
+          "description": "the project id this network belongs to, can be empty if globally available",
+          "type": "string"
         }
       }
     },
     "v1.NetworkCreateRequest": {
       "required": [
         "id",
-        "underlay",
-        "prefixes",
+        "labels",
         "destinationprefixes",
         "nat",
-        "primary"
+        "privatesuper",
+        "underlay",
+        "parentnetworkid",
+        "prefixes"
       ],
       "properties": {
         "description": {
@@ -3566,6 +4413,13 @@
           "type": "string",
           "uniqueItems": true
         },
+        "labels": {
+          "description": "free labels that you associate with this network.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "name": {
           "description": "a readable name for this entity",
           "type": "string"
@@ -3573,6 +4427,10 @@
         "nat": {
           "description": "if set to true, packets leaving this network get masqueraded behind interface ip",
           "type": "boolean"
+        },
+        "parentnetworkid": {
+          "description": "the id of the parent network",
+          "type": "string"
         },
         "partitionid": {
           "description": "the partition this network belongs to",
@@ -3585,12 +4443,12 @@
             "type": "string"
           }
         },
-        "primary": {
-          "description": "if set to true, this network is attached to a machine/firewall",
+        "privatesuper": {
+          "description": "if set to true, this network will serve as a partition's super network for the internal machine networks,there can only be one privatesuper network per partition",
           "type": "boolean"
         },
         "projectid": {
-          "description": "the project this network belongs to, can be empty if globally available",
+          "description": "the project id this network belongs to, can be empty if globally available",
           "type": "string"
         },
         "underlay": {
@@ -3601,20 +4459,90 @@
           "description": "the vrf this network is associated with",
           "type": "integer",
           "format": "integer"
+        },
+        "vrfshared": {
+          "description": "if set to true, given vrf can be used by multiple networks, which is sometimes useful for network partioning (default: false)",
+          "type": "boolean"
+        }
+      }
+    },
+    "v1.NetworkFindRequest": {
+      "required": [
+        "underlay",
+        "labels",
+        "id",
+        "partitionid",
+        "projectid",
+        "destinationprefixes",
+        "nat",
+        "privatesuper",
+        "name",
+        "prefixes",
+        "vrf",
+        "parentnetworkid"
+      ],
+      "properties": {
+        "destinationprefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "nat": {
+          "type": "boolean"
+        },
+        "parentnetworkid": {
+          "type": "string"
+        },
+        "partitionid": {
+          "type": "string"
+        },
+        "prefixes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "privatesuper": {
+          "type": "boolean"
+        },
+        "projectid": {
+          "type": "string"
+        },
+        "underlay": {
+          "type": "boolean"
+        },
+        "vrf": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
     "v1.NetworkResponse": {
       "required": [
         "id",
+        "labels",
+        "parentnetworkid",
         "prefixes",
         "destinationprefixes",
         "nat",
-        "primary",
+        "privatesuper",
         "underlay",
         "usage",
-        "created",
-        "changed"
+        "changed",
+        "created"
       ],
       "properties": {
         "changed": {
@@ -3645,6 +4573,13 @@
           "type": "string",
           "uniqueItems": true
         },
+        "labels": {
+          "description": "free labels that you associate with this network.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "name": {
           "description": "a readable name for this entity",
           "type": "string"
@@ -3652,6 +4587,10 @@
         "nat": {
           "description": "if set to true, packets leaving this network get masqueraded behind interface ip",
           "type": "boolean"
+        },
+        "parentnetworkid": {
+          "description": "the id of the parent network",
+          "type": "string"
         },
         "partitionid": {
           "description": "the partition this network belongs to",
@@ -3664,12 +4603,12 @@
             "type": "string"
           }
         },
-        "primary": {
-          "description": "if set to true, this network is attached to a machine/firewall",
+        "privatesuper": {
+          "description": "if set to true, this network will serve as a partition's super network for the internal machine networks,there can only be one privatesuper network per partition",
           "type": "boolean"
         },
         "projectid": {
-          "description": "the project this network belongs to, can be empty if globally available",
+          "description": "the project id this network belongs to, can be empty if globally available",
           "type": "string"
         },
         "underlay": {
@@ -3684,6 +4623,10 @@
           "description": "the vrf this network is associated with",
           "type": "integer",
           "format": "integer"
+        },
+        "vrfshared": {
+          "description": "if set to true, given vrf can be used by multiple networks, which is sometimes useful for network partioning (default: false)",
+          "type": "boolean"
         }
       }
     },
@@ -3757,6 +4700,34 @@
         }
       }
     },
+    "v1.PartitionCapacity": {
+      "required": [
+        "id",
+        "servers"
+      ],
+      "properties": {
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "servers": {
+          "description": "servers available in this partition",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.ServerCapacity"
+          }
+        }
+      }
+    },
     "v1.PartitionCreateRequest": {
       "required": [
         "id",
@@ -3784,8 +4755,8 @@
           "description": "a readable name for this entity",
           "type": "string"
         },
-        "projectnetworkprefixlength": {
-          "description": "the length of project networks for this partition, default 22",
+        "privatenetworkprefixlength": {
+          "description": "the length of private networks for the machine's child networks in this partition, default 22",
           "type": "integer",
           "format": "int32",
           "maximum": 30,
@@ -3834,8 +4805,8 @@
           "description": "a readable name for this entity",
           "type": "string"
         },
-        "projectnetworkprefixlength": {
-          "description": "the length of project networks for this partition, default 22",
+        "privatenetworkprefixlength": {
+          "description": "the length of private networks for the machine's child networks in this partition, default 22",
           "type": "integer",
           "format": "int32",
           "maximum": 30,
@@ -3871,6 +4842,136 @@
         }
       }
     },
+    "v1.ProjectCreateRequest": {
+      "required": [
+        "id",
+        "tenant"
+      ],
+      "properties": {
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "tenant": {
+          "description": "the tenant of this project.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.ProjectFindRequest": {
+      "required": [
+        "id",
+        "name",
+        "tenant"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tenant": {
+          "type": "string"
+        }
+      }
+    },
+    "v1.ProjectResponse": {
+      "required": [
+        "id",
+        "tenant",
+        "created",
+        "changed"
+      ],
+      "properties": {
+        "changed": {
+          "description": "the last changed timestamp of this entity",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "created": {
+          "description": "the creation time of this entity",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "tenant": {
+          "description": "the tenant of this project.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.ProjectUpdateRequest": {
+      "required": [
+        "id",
+        "tenant"
+      ],
+      "properties": {
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "tenant": {
+          "description": "the tenant of this project.",
+          "type": "string"
+        }
+      }
+    },
+    "v1.ServerCapacity": {
+      "required": [
+        "size",
+        "total",
+        "free"
+      ],
+      "properties": {
+        "free": {
+          "description": "free servers with this size",
+          "type": "integer",
+          "format": "int32"
+        },
+        "size": {
+          "description": "the size of the server",
+          "type": "string"
+        },
+        "total": {
+          "description": "total amount of servers with this size",
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
     "v1.SizeConstraint": {
       "description": "a machine matches to a size in order to make them easier to categorize",
       "required": [
@@ -3895,6 +4996,27 @@
             "memory",
             "storage"
           ]
+        }
+      }
+    },
+    "v1.SizeConstraintMatchingLog": {
+      "required": [
+        "constraint",
+        "match",
+        "log"
+      ],
+      "properties": {
+        "constraint": {
+          "description": "the size constraint to which this log relates to",
+          "$ref": "#/definitions/v1.SizeConstraint"
+        },
+        "log": {
+          "description": "a string represention of the matching condition",
+          "type": "string"
+        },
+        "match": {
+          "description": "indicates whether the constraint matched or not",
+          "type": "boolean"
         }
       }
     },
@@ -3926,12 +5048,37 @@
         }
       }
     },
+    "v1.SizeMatchingLog": {
+      "required": [
+        "name",
+        "log",
+        "match",
+        "constraints"
+      ],
+      "properties": {
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.SizeConstraintMatchingLog"
+          }
+        },
+        "log": {
+          "type": "string"
+        },
+        "match": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "v1.SizeResponse": {
       "required": [
         "id",
         "constraints",
-        "created",
-        "changed"
+        "changed",
+        "created"
       ],
       "properties": {
         "changed": {
@@ -3994,6 +5141,143 @@
           "type": "string"
         }
       }
+    },
+    "v1.SwitchConnection": {
+      "required": [
+        "nic"
+      ],
+      "properties": {
+        "machine_id": {
+          "description": "the machine id of the machine connected to the nic",
+          "type": "string"
+        },
+        "nic": {
+          "description": "a network interface on the switch",
+          "$ref": "#/definitions/v1.SwitchNic"
+        }
+      }
+    },
+    "v1.SwitchNic": {
+      "required": [
+        "mac",
+        "name"
+      ],
+      "properties": {
+        "filter": {
+          "description": "configures the bgp filter applied at the switch port",
+          "$ref": "#/definitions/v1.BGPFilter"
+        },
+        "mac": {
+          "description": "the mac address of this network interface",
+          "type": "string"
+        },
+        "name": {
+          "description": "the name of this network interface",
+          "type": "string"
+        },
+        "vrf": {
+          "description": "the vrf this network interface is part of",
+          "type": "string"
+        }
+      }
+    },
+    "v1.SwitchRegisterRequest": {
+      "required": [
+        "id",
+        "nics",
+        "partition_id",
+        "rack_id"
+      ],
+      "properties": {
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "nics": {
+          "description": "the list of network interfaces on the switch",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.SwitchNic"
+          }
+        },
+        "partition_id": {
+          "description": "the partition in which this switch is located",
+          "type": "string"
+        },
+        "rack_id": {
+          "description": "the id of the rack in which this switch is located",
+          "type": "string"
+        }
+      }
+    },
+    "v1.SwitchResponse": {
+      "required": [
+        "id",
+        "rack_id",
+        "nics",
+        "partition",
+        "connections",
+        "created",
+        "changed"
+      ],
+      "properties": {
+        "changed": {
+          "description": "the last changed timestamp of this entity",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "connections": {
+          "description": "a connection between a switch port and a machine",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.SwitchConnection"
+          }
+        },
+        "created": {
+          "description": "the creation time of this entity",
+          "type": "string",
+          "format": "date-time",
+          "readOnly": true
+        },
+        "description": {
+          "description": "a description for this entity",
+          "type": "string"
+        },
+        "id": {
+          "description": "the unique ID of this entity",
+          "type": "string",
+          "uniqueItems": true
+        },
+        "name": {
+          "description": "a readable name for this entity",
+          "type": "string"
+        },
+        "nics": {
+          "description": "the list of network interfaces on the switch",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1.SwitchNic"
+          }
+        },
+        "partition": {
+          "description": "the partition in which this switch is located",
+          "$ref": "#/definitions/v1.PartitionResponse"
+        },
+        "rack_id": {
+          "description": "the id of the rack in which this switch is located",
+          "type": "string"
+        }
+      }
     }
   },
   "securityDefinitions": {
@@ -4012,10 +5296,10 @@
   },
   "security": [
     {
-      "HMAC": []
-    },
-    {
-      "jwt": []
+      "Authorization": [
+        "HMAC",
+        "jwt"
+      ]
     }
   ],
   "tags": [
@@ -4036,11 +5320,15 @@
       "name": "size"
     },
     {
-      "description": "Managing machines",
+      "description": "Managing machine entities",
       "name": "machine"
     },
     {
-      "description": "Managing switches",
+      "description": "Managing project entities",
+      "name": "project"
+    },
+    {
+      "description": "Managing switch entities",
       "name": "switch"
     }
   ]
