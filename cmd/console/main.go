@@ -1,10 +1,11 @@
 package main
 
 import (
+	"os"
+
 	"git.f-i-ts.de/cloud-native/metal/metal-console/internal/server"
 	"git.f-i-ts.de/cloud-native/metallib/zapup"
 	"github.com/kelseyhightower/envconfig"
-	"os"
 )
 
 var (
@@ -23,9 +24,14 @@ func main() {
 	}
 
 	zapup.MustRootLogger().Sugar().Info("metal-console", "version", getVersionString(),
-		"port", spec.Port, "metal-api", spec.MetalAPIAddress, "devmode", spec.DevMode())
+		"port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
 
-	server.New(zapup.MustRootLogger(), spec).Run()
+	s, err := server.New(zapup.MustRootLogger(), spec)
+	if err != nil {
+		zapup.MustRootLogger().Error(err.Error())
+		os.Exit(1)
+	}
+	s.Run()
 }
 
 func getVersionString() string {

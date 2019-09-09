@@ -1,4 +1,4 @@
-FROM nginx:1.15.8
+FROM nginx:1.17
 LABEL maintainer FI-TS Devops <devops@f-i-ts.de>
 
 COPY nginx.conf /etc/nginx/

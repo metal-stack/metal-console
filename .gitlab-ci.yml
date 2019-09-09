@@ -12,3 +12,12 @@ push:
     - docker-make -l -x rule2,rule3 -s -w cmd/console
   only:
     - master
+
+branch:
+  stage: push
+  script:
+    - docker-make -ln -x rule2,rule3 -s -w bmc-reverse-proxy
+    - docker-make -ln -x rule2,rule3 -s -w cmd/bmcproxy
+    - docker-make -ln -x rule2,rule3 -s -w cmd/console
+  except:
+    - master
