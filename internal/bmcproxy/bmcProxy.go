@@ -2,7 +2,7 @@ package bmcproxy
 
 import (
 	"fmt"
-	"git.f-i-ts.de/cloud-native/metal/bmc-proxy/metal-api/models"
+	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"github.com/gliderlabs/ssh"
 	"github.com/kr/pty"
 	"github.com/pkg/errors"
@@ -157,9 +157,9 @@ func setWinSize(f *os.File, w, h int) {
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	privateBytes, err := ioutil.ReadFile("/host-key")
+	bb, err := ioutil.ReadFile("/host-key")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}
-	return gossh.ParsePrivateKey(privateBytes)
+	return gossh.ParsePrivateKey(bb)
 }

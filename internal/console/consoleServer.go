@@ -1,9 +1,11 @@
-package server
+package console
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
+	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"io"
 	"io/ioutil"
 	"runtime"
@@ -17,8 +19,6 @@ import (
 
 	"github.com/metal-pod/security"
 
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"github.com/gliderlabs/ssh"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -35,7 +35,7 @@ type consoleServer struct {
 	Auth          rt.ClientAuthInfoWriter
 }
 
-func New(log *zap.Logger, spec *Specification) (*consoleServer, error) {
+func NewServer(log *zap.Logger, spec *Specification) (*consoleServer, error) {
 	client, err := newMachineClient(spec.MetalAPIURL)
 	if err != nil {
 		return nil, err

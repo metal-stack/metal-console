@@ -1,4 +1,4 @@
-package server
+package console
 
 // Specification configures the application via environment.
 type Specification struct {

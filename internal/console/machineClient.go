@@ -1,10 +1,10 @@
-package server
+package console
 
 import (
-	"net/url"
-
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
 	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
+	"net/url"
+
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )

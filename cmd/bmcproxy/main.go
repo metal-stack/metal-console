@@ -1,7 +1,7 @@
 package main
 
 import (
-	"git.f-i-ts.de/cloud-native/metal/bmc-proxy/internal/bmcproxy"
+	"git.f-i-ts.de/cloud-native/metal/metal-console/internal/bmcproxy"
 	"git.f-i-ts.de/cloud-native/metallib/zapup"
 	"github.com/kelseyhightower/envconfig"
 	"os"

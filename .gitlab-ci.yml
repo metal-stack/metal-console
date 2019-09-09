@@ -4,20 +4,32 @@ image: registry.cloud.fits/fits/buildtools:1
 stages:
   - push
 
-push:
+master:
   stage: push
   script:
-    - docker-make -l -x rule2,rule3 -s -w bmc-reverse-proxy
-    - docker-make -l -x rule2,rule3 -s -w cmd/bmcproxy
-    - docker-make -l -x rule2,rule3 -s -w cmd/console
+    - cp Dockerfile.bmcreverseproxy Dockerfile
+    - cp docker-make.bmcreverseproxy.yaml docker-make.yaml
+    - docker-make -l -x rule2,rule3 -s
+    - cp Dockerfile.bmcproxy Dockerfile
+    - cp docker-make.bmcproxy.yaml docker-make.yaml
+    - docker-make -l -x rule2,rule3 -s
+    - cp Dockerfile.console Dockerfile
+    - cp docker-make.console.yaml docker-make.yaml
+    - docker-make -l -x rule2,rule3 -s
   only:
     - master
 
 branch:
   stage: push
   script:
-    - docker-make -ln -x rule2,rule3 -s -w bmc-reverse-proxy
-    - docker-make -ln -x rule2,rule3 -s -w cmd/bmcproxy
-    - docker-make -ln -x rule2,rule3 -s -w cmd/console
+    - cp Dockerfile.bmcreverseproxy Dockerfile
+    - cp docker-make.bmcreverseproxy.yaml docker-make.yaml
+    - docker-make -ln -x rule2,rule3 -s
+    - cp Dockerfile.bmcproxy Dockerfile
+    - cp docker-make.bmcproxy.yaml docker-make.yaml
+    - docker-make -ln -x rule2,rule3 -s
+    - cp Dockerfile.console Dockerfile
+    - cp docker-make.console.yaml docker-make.yaml
+    - docker-make -ln -x rule2,rule3 -s
   except:
     - master

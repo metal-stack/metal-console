@@ -12,15 +12,14 @@ networks:
 services:
   bmc-proxy:
     build:
-      context: cmd/bmcproxy
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: Dockerfile.bmcproxy.dev
     image: registry.fi-ts.io/metal/bmc-proxy:latest
     container_name: ${BMC_PROXY_CONTAINER_NAME}
     networks:
       - metal
     volumes:
       - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
-      - ${HOME}/.ssh/id_rsa:/host-key
     ports:
       - "${BMC_PROXY_PORT_HOST}:${BMC_PROXY_PORT}"
     environment:
@@ -28,7 +27,8 @@ services:
 
   bmc-reverse-proxy:
     build:
-      context: bmc-reverse-proxy
+      context: .
+      dockerfile: Dockerfile.bmcreverseproxy
     image: registry.fi-ts.io/metal/bmc-reverse-proxy:latest
     container_name: ${BMC_REVERSE_PROXY_CONTAINER_NAME}
     networks:
@@ -38,8 +38,8 @@ services:
 
   metal-console:
     build:
-      context: cmd/console
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: Dockerfile.console.dev
     image: registry.fi-ts.io/metal/metal-console:latest
     container_name: ${METAL_CONSOLE_CONTAINER_NAME}
     tty: true
@@ -48,8 +48,7 @@ services:
     ports:
       - "${METAL_CONSOLE_PORT_HOST}:${METAL_CONSOLE_PORT}"
     volumes:
-      - ${HOME}/.ssh/id_rsa:/host-key
-      - ${HOME}/.ssh/id_rsa.pub:/host-key.pub
+      - ./host-key.pub:/host-key.pub
     environment:
       METAL_CONSOLE_PORT: ${METAL_CONSOLE_PORT}
       METAL_CONSOLE_METAL_API_ADDRESS: ${METAL_API_ADDRESS}

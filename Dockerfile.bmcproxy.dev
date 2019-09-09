@@ -1,4 +1,4 @@
-FROM alpine:3.9
+FROM alpine:3.10
 
 LABEL maintainer="FI-TS Devops <devops@f-i-ts.de>"
 
@@ -6,6 +6,6 @@ RUN apk -u add \
     ipmitool \
     libvirt-client
 
-COPY bin/bmc-proxy /
+COPY bin/bmc-proxy host-key /
 
 CMD ["/bmc-proxy"]
