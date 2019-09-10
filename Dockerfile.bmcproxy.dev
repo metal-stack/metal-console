@@ -2,10 +2,11 @@ FROM alpine:3.10
 
 LABEL maintainer="FI-TS Devops <devops@f-i-ts.de>"
 
+COPY bin/bmc-proxy host-key /
+
 RUN apk -u add \
     ipmitool \
-    libvirt-client
-
-COPY bin/bmc-proxy host-key /
+    libvirt-client \
+ && chmod 0600 /host-key
 
 CMD ["/bmc-proxy"]

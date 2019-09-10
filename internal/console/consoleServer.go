@@ -4,20 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
+	metalgo "github.com/metal-pod/metal-go"
 	"io"
 	"io/ioutil"
 	"runtime"
 	"sync"
-
-	rt "github.com/go-openapi/runtime"
-
-	"time"
-
-	"github.com/go-openapi/strfmt"
-
-	"github.com/metal-pod/security"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/pkg/errors"
@@ -27,38 +18,24 @@ import (
 
 type consoleServer struct {
 	log           *zap.Logger
-	machineClient *machine.Client
+	machineClient *metalgo.Driver
 	spec          *Specification
 	mutex         sync.RWMutex
 	ips           *sync.Map
-	hmac          security.HMACAuth
-	Auth          rt.ClientAuthInfoWriter
 }
 
 func NewServer(log *zap.Logger, spec *Specification) (*consoleServer, error) {
-	client, err := newMachineClient(spec.MetalAPIURL)
+	client, err := newMachineClient(spec.MetalAPIURL, spec.HMACKey)
 	if err != nil {
 		return nil, err
 	}
-	cs := &consoleServer{
+	return &consoleServer{
 		log:           log,
 		machineClient: client,
 		spec:          spec,
 		ips:           &sync.Map{},
 		mutex:         sync.RWMutex{},
-	}
-	cs.InitHMAC(spec.HMACKey)
-	return cs, nil
-}
-
-func (cs *consoleServer) InitHMAC(hmacKey string) {
-	cs.hmac = security.NewHMACAuth("Metal-Edit", []byte(hmacKey))
-	cs.Auth = rt.ClientAuthInfoWriterFunc(cs.auther)
-}
-
-func (cs *consoleServer) auther(rq rt.ClientRequest, rg strfmt.Registry) error {
-	cs.hmac.AddAuthToClientRequest(rq, time.Now())
-	return nil
+	}, nil
 }
 
 // Run starts ssh server and listen for console connections.
@@ -101,6 +78,10 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	defer s.Exit(0)
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
+
+	if cs.spec.DevMode() {
+		mgmtServiceAddress = cs.spec.BmcReverseProxyAddress
+	}
 
 	tcpConn := cs.connectToManagementNetwork(mgmtServiceAddress)
 	defer tcpConn.Close()
@@ -253,22 +234,10 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 }
 
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
-	var metalIPMI *models.V1MachineIPMI
-	if cs.spec.DevMode() {
-		user := "ADMIN" //TODO
-		pw := "ADMIN"
-		metalIPMI = &models.V1MachineIPMI{
-			Address:  &machineIP,
-			User:     &user,
-			Password: &pw,
-		}
-	} else {
-		var err error
-		metalIPMI, err = cs.getIPMIData(machineID)
-		if err != nil {
-			cs.log.Sugar().Fatal("Failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
-			runtime.Goexit()
-		}
+	metalIPMI, err := cs.getIPMIData(machineID)
+	if err != nil {
+		cs.log.Sugar().Fatal("Failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
+		runtime.Goexit()
 	}
 
 	ipmiData, err := metalIPMI.MarshalBinary()
@@ -284,58 +253,50 @@ func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, mach
 	}
 }
 
-func (cs *consoleServer) authHandler(ctx ssh.Context, publickey ssh.PublicKey) bool {
+func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
-	cs.log.Sugar().Info("authHandler", "machineID", machineID, "publickey", publickey)
+	cs.log.Sugar().Info("authHandler", "publicKey", publicKey)
 	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
 	if err != nil {
-		cs.log.Sugar().Error("authHandler no authorized_keys found", "machineID", machineID, "error", err)
+		cs.log.Sugar().Error("no authorized keys found", "machineID", machineID, "error", err)
 		return false
 	}
 	for _, key := range knownAuthorizedKeys {
-		cs.log.Sugar().Info("authHandler", "machineID", machineID, "authorized_key", key)
-		same := ssh.KeysEqual(publickey, key)
+		cs.log.Sugar().Info("authHandler", "machineID", machineID, "authorizedKey", key)
+		same := ssh.KeysEqual(publicKey, key)
 		if same {
 			return true
 		}
 	}
-	cs.log.Sugar().Warn("authHandler no matching authorized_key found", "machineID", machineID)
+	cs.log.Sugar().Warn("no matching authorized key found", "machineID", machineID)
 	return false
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
-	var m *models.V1MachineResponse
+	resp, err := cs.getMachine(machineID)
+	if err != nil {
+		cs.log.Sugar().Error("unable to fetch requested machine", "machineID", machineID, "error", err)
+		return nil, err
+	}
+	if resp == nil {
+		cs.log.Sugar().Error("requested machine is nil", "machineID", machineID)
+		return nil, err
+	}
+
 	if cs.spec.DevMode() {
 		bb, err := ioutil.ReadFile(cs.spec.PublicKey)
 		if err != nil {
 			cs.log.Sugar().Error("unable to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
-		private := true
-		m = &models.V1MachineResponse{
-			Allocation: &models.V1MachineAllocation{
-				Networks: []*models.V1MachineNetwork{{Private: &private, Ips: []string{machineID}}},
-				SSHPubKeys: []string{
-					string(bb),
-				},
-			},
-		}
-	} else {
-		var err error
-		m, err = cs.getMachine(machineID)
-		if err != nil {
-			cs.log.Sugar().Error("unable to fetch requested machine", "machineID", machineID, "error", err)
-			return nil, err
-		}
-		if m == nil {
-			cs.log.Sugar().Error("requested machine is nil", "machineID", machineID)
-			return nil, err
+		resp.Allocation.SSHPubKeys = []string{
+			string(bb),
 		}
 	}
 
 	privateIP := ""
-	if m.Allocation != nil {
-		for _, nw := range m.Allocation.Networks {
+	if resp.Allocation != nil {
+		for _, nw := range resp.Allocation.Networks {
 			if *nw.Private {
 				if len(nw.Ips) > 0 {
 					privateIP = nw.Ips[0]
@@ -345,12 +306,12 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		}
 	}
 	if privateIP == "" {
-		return nil, fmt.Errorf("unable to detect primary IP of machine:%s", machineID)
+		return nil, fmt.Errorf("unable to detect private IP of machine:%s", machineID)
 	}
 	cs.ips.Store(machineID, privateIP)
 
 	var pubKeys []ssh.PublicKey
-	for _, key := range m.Allocation.SSHPubKeys {
+	for _, key := range resp.Allocation.SSHPubKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {
 			return nil, errors.Wrap(err, "error parsing public key")
