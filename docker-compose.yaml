@@ -48,9 +48,10 @@ services:
     ports:
       - "${METAL_CONSOLE_PORT_HOST}:${METAL_CONSOLE_PORT}"
     volumes:
-      - ./host-key.pub:/host-key.pub
+      - ${HOME}/.ssh/id_rsa.pub:/public-key
     environment:
       METAL_CONSOLE_PORT: ${METAL_CONSOLE_PORT}
-      METAL_CONSOLE_METAL_API_ADDRESS: ${METAL_API_ADDRESS}
+      METAL_CONSOLE_METAL_API_URL: ${METAL_API_URL}
+      METAL_CONSOLE_HMAC_KEY: ytjdBPHvXgc3xfY3e5szLSDB3gajRwefSqvFyFX4
       METAL_CONSOLE_BMC_REVERSE_PROXY_ADDRESS: bmc-reverse-proxy:${BMC_REVERSE_PROXY_PORT}
-      METAL_CONSOLE_PUBLIC_KEY: /host-key.pub
+      METAL_CONSOLE_PUBLIC_KEY: /public-key

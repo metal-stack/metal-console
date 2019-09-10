@@ -7,4 +7,6 @@ LABEL maintainer="FI-TS Devops <devops@f-i-ts.de>"
 COPY host-key ca.crt client.crt client.pem /
 COPY --from=builder /work/bin/metal-console /
 
+RUN chmod 0600 /host-key /client.pem
+
 CMD ["/metal-console"]

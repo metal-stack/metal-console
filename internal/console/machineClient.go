@@ -1,39 +1,40 @@
 package console
 
 import (
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/client/machine"
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
-	"net/url"
-
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
+	"fmt"
+	metalgo "github.com/metal-pod/metal-go"
+	"github.com/metal-pod/metal-go/api/models"
 )
 
-func newMachineClient(metalURL string) (*machine.Client, error) {
-	u, err := url.Parse(metalURL)
+func newMachineClient(metalAPIURL string, hmac string) (*metalgo.Driver, error) {
+	driver, err := metalgo.NewDriver(metalAPIURL, "", hmac)
 	if err != nil {
 		return nil, err
 	}
-	transport := httptransport.New(u.Host, u.Path, nil)
-	return machine.New(transport, strfmt.Default), nil
+	return driver, nil
 }
 
 func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse, error) {
-	findMachineParams := machine.NewFindMachineParams()
-	findMachineParams.ID = machineID
-	metalMachine, err := cs.machineClient.FindMachine(findMachineParams, cs.Auth)
+	mfr := &metalgo.MachineFindRequest{
+		ID: &machineID,
+	}
+	resp, err := cs.machineClient.MachineFind(mfr)
 	if err != nil {
 		return nil, err
 	}
-	return metalMachine.Payload, nil
+	if len(resp.Machines) == 0 {
+		return nil, fmt.Errorf("no machine found with ID %q", machineID)
+	}
+	if len(resp.Machines) > 1 {
+		return nil, fmt.Errorf("%d machines found with ID %q", len(resp.Machines), machineID)
+	}
+	return resp.Machines[0], nil
 }
 
 func (cs *consoleServer) getIPMIData(machineID string) (*models.V1MachineIPMI, error) {
-	ipmiDataParams := machine.NewIPMIDataParams()
-	ipmiDataParams.ID = machineID
-	ipmiData, err := cs.machineClient.IPMIData(ipmiDataParams, cs.Auth)
+	ipmiData, err := cs.machineClient.MachineIpmi(machineID)
 	if err != nil {
 		return nil, err
 	}
-	return ipmiData.Payload, nil
+	return ipmiData.IPMI, nil
 }

@@ -2,9 +2,9 @@ package bmcproxy
 
 import (
 	"fmt"
-	"git.f-i-ts.de/cloud-native/metal/metal-console/metal-api/models"
 	"github.com/gliderlabs/ssh"
 	"github.com/kr/pty"
+	"github.com/metal-pod/metal-go/api/models"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"

@@ -11,4 +11,6 @@ RUN apk add \
 COPY host-key /
 COPY --from=builder /work/bin/bmc-proxy /
 
+RUN chmod 0600 /host-key
+
 CMD ["/bmc-proxy"]
