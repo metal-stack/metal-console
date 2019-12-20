@@ -234,13 +234,13 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 }
 
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
-	metalIPMI, err := cs.getIPMIData(machineID)
+	m, err := cs.getMachineIPMI(machineID)
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
 		runtime.Goexit()
 	}
 
-	ipmiData, err := metalIPMI.MarshalBinary()
+	ipmiData, err := m.IPMI.MarshalBinary()
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to marshal MetalIPMI", "error", err)
 		runtime.Goexit()

@@ -142,6 +142,8 @@ github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e h1:hB2xlXdHp/pmPZq
 github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/metal-pod/metal-go v0.0.0-20190904133716-d7122fdd20c2 h1:1aU8SToetUiSGUW/kKTI0tN9DGauX1QEwTcxVP4/z74=
 github.com/metal-pod/metal-go v0.0.0-20190904133716-d7122fdd20c2/go.mod h1:t27h77pANpArsVodEuJIo4HqmjqgRjTpIDgesABlE7I=
+github.com/metal-pod/metal-go v0.2.1-0.20191220085019-72dae27c484d h1:yubZQsCimF2Ohi2UIEvHPcT97YZwnqOvco1ki9xYMK4=
+github.com/metal-pod/metal-go v0.2.1-0.20191220085019-72dae27c484d/go.mod h1:t27h77pANpArsVodEuJIo4HqmjqgRjTpIDgesABlE7I=
 github.com/metal-pod/security v0.0.0-20190605085245-f3d2eb409950 h1:5Rbtz1UHTXktBc9uxAXk99jd33cir7FBKVeFcZ1Q0T4=
 github.com/metal-pod/security v0.0.0-20190605085245-f3d2eb409950/go.mod h1:BUuL3n1TYvrGlxfUl2L6zrErSkw1NPchimPfcWMSU1k=
 github.com/metal-pod/security v0.0.0-20190605103437-319d1b2eca89 h1:RRVjpKhVGMGoDjadvr0IZWQSPoFvYUp4es7s62zhx8k=
