@@ -11,8 +11,11 @@ default-build-args:
   - HTTPS_PROXY=${HTTP_PROXY}
   - NO_PROXY=${NO_PROXY}
   - no_proxy=${NO_PROXY}
+  - VERSION=${CI_COMMIT_REF_NAME}
 builds:
-  -
-    name: "bmc-reverse-proxy"
+  - name: "bmc-reverse-proxy-slug"
+    tags:
+      - ${CI_COMMIT_REF_NAME}
+  - name: "bmc-reverse-proxy-master"
     tags:
       - latest
