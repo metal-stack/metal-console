@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	metalgo "github.com/metal-pod/metal-go"
 	"io"
 	"io/ioutil"
 	"runtime"
 	"sync"
+
+	metalgo "github.com/metal-stack/metal-go"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/pkg/errors"
@@ -63,19 +64,24 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	ip, err := cs.getIP(machineID)
 	if err != nil {
 		cs.log.Sugar().Fatal("failed to get console", "machineID", machineID, "error", err)
-		s.Exit(1)
-		return
 	}
 	defer cs.ips.Delete(machineID)
 
 	m, err := cs.getMachine(machineID)
 	if err != nil {
 		cs.log.Sugar().Error("unable to fetch requested machine", "machineID", machineID, "error", err)
-		s.Exit(1)
-		return
+		err = s.Exit(1)
+		if err != nil {
+			cs.log.Sugar().Errorw("Unable to exit ssh session", "error", err)
+		}
 	}
 
-	defer s.Exit(0)
+	defer func() {
+		err = s.Exit(1)
+		if err != nil {
+			cs.log.Sugar().Errorw("Unable to exit ssh session", "error", err)
+		}
+	}()
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
@@ -234,13 +240,13 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 }
 
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
-	metalIPMI, err := cs.getIPMIData(machineID)
+	m, err := cs.getMachineIPMI(machineID)
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
 		runtime.Goexit()
 	}
 
-	ipmiData, err := metalIPMI.MarshalBinary()
+	ipmiData, err := m.IPMI.MarshalBinary()
 	if err != nil {
 		cs.log.Sugar().Fatal("Failed to marshal MetalIPMI", "error", err)
 		runtime.Goexit()

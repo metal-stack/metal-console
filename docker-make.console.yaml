@@ -11,8 +11,11 @@ default-build-args:
   - HTTPS_PROXY=${HTTP_PROXY}
   - NO_PROXY=${NO_PROXY}
   - no_proxy=${NO_PROXY}
+  - VERSION=${CI_COMMIT_REF_NAME}
 builds:
-  -
-    name: "metal-console"
+  - name: "metal-console-slug"
+    tags:
+      - ${CI_COMMIT_REF_NAME}
+  - name: "metal-console-master"
     tags:
       - latest

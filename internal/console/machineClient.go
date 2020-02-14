@@ -2,8 +2,9 @@ package console
 
 import (
 	"fmt"
-	metalgo "github.com/metal-pod/metal-go"
-	"github.com/metal-pod/metal-go/api/models"
+
+	metalgo "github.com/metal-stack/metal-go"
+	"github.com/metal-stack/metal-go/api/models"
 )
 
 func newMachineClient(metalAPIURL string, hmac string) (*metalgo.Driver, error) {
@@ -31,10 +32,10 @@ func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse
 	return resp.Machines[0], nil
 }
 
-func (cs *consoleServer) getIPMIData(machineID string) (*models.V1MachineIPMI, error) {
-	ipmiData, err := cs.machineClient.MachineIpmi(machineID)
+func (cs *consoleServer) getMachineIPMI(machineID string) (*models.V1MachineIPMIResponse, error) {
+	resp, err := cs.machineClient.MachineIPMIGet(machineID)
 	if err != nil {
 		return nil, err
 	}
-	return ipmiData.IPMI, nil
+	return resp.Machine, nil
 }
