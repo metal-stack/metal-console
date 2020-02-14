@@ -2,12 +2,6 @@ package bmcproxy
 
 import (
 	"fmt"
-	"github.com/gliderlabs/ssh"
-	"github.com/kr/pty"
-	"github.com/metal-pod/metal-go/api/models"
-	"github.com/pkg/errors"
-	"go.uber.org/zap"
-	gossh "golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +10,13 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/gliderlabs/ssh"
+	"github.com/kr/pty"
+	"github.com/metal-stack/metal-go/api/models"
+	"github.com/pkg/errors"
+	"go.uber.org/zap"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 type bmcProxy struct {
@@ -54,17 +55,24 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	p.log.Sugar().Info("connection to", "machineID", machineID)
 	if metalIPMI == nil {
 		p.log.Sugar().Fatal("failed to receive IPMI data", "machineID", machineID)
-		s.Exit(1)
-		return
 	}
-	io.WriteString(s, fmt.Sprintf("Connecting to console of %q (%s)\n", machineID, *metalIPMI.Address))
+	_, err := io.WriteString(s, fmt.Sprintf("Connecting to console of %q (%s)\n", machineID, *metalIPMI.Address))
+	if err != nil {
+		p.log.Sugar().Warnw("failed to write to console", "machineID", machineID)
+	}
 
 	var cmd *exec.Cmd
 	if p.spec.DevMode {
-		io.WriteString(s, "Exit with '<Ctrl> 5'\n")
+		_, err = io.WriteString(s, "Exit with '<Ctrl> 5'\n")
+		if err != nil {
+			p.log.Sugar().Warnw("failed to write to console", "machineID", machineID)
+		}
 		cmd = exec.Command("virsh", "console", *metalIPMI.Address, "--force")
 	} else {
-		io.WriteString(s, "Exit with '~.'\n")
+		_, err = io.WriteString(s, "Exit with '~.'\n")
+		if err != nil {
+			p.log.Sugar().Warnw("failed to write to console", "machineID", machineID)
+		}
 		addressParts := strings.Split(*metalIPMI.Address, ":")
 		host := addressParts[0]
 		port := addressParts[1]
@@ -82,8 +90,10 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		f, err := pty.Start(cmd)
 		if err != nil {
 			p.log.Sugar().Error("Command execution failed", "error", err)
-			// do not tell the user what went wrong
-			s.Exit(1)
+			err = s.Exit(1)
+			if err != nil {
+				p.log.Sugar().Errorw("Unable to exit ssh session", "error", err)
+			}
 			return
 		}
 
@@ -115,8 +125,14 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		<-done
 
 	} else {
-		io.WriteString(s, "No PTY requested.\n")
-		s.Exit(1)
+		_, err = io.WriteString(s, "No PTY requested.\n")
+		if err != nil {
+			p.log.Sugar().Warnw("failed to write to console", "machineID", machineID)
+		}
+		err = s.Exit(1)
+		if err != nil {
+			p.log.Sugar().Errorw("Unable to exit ssh session", "error", err)
+		}
 	}
 }
 

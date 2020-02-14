@@ -1,35 +1,19 @@
 ---
 image: registry.cloud.fits/fits/buildtools:1
 
-stages:
-  - push
+with-slug:
+  script: 
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.bmcproxy -f docker-make.bmcproxy.yaml --summary --build-only bmc-proxy-slug 
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.bmcreverseproxy -f docker-make.bmcreverseproxy.yaml --summary --build-only bmc-reverse-proxy-slug 
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.console -f docker-make.console.yaml --summary --build-only metal-console-slug 
+  only:
+    - merge_requests
+    - tags
 
 master:
-  stage: push
   script:
-    - cp Dockerfile.bmcreverseproxy Dockerfile
-    - cp docker-make.bmcreverseproxy.yaml docker-make.yaml
-    - docker-make -l -x rule2,rule3 -s
-    - cp Dockerfile.bmcproxy Dockerfile
-    - cp docker-make.bmcproxy.yaml docker-make.yaml
-    - docker-make -l -x rule2,rule3 -s
-    - cp Dockerfile.console Dockerfile
-    - cp docker-make.console.yaml docker-make.yaml
-    - docker-make -l -x rule2,rule3 -s
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.bmcproxy -f docker-make.bmcproxy.yaml --summary --build-only bmc-proxy-master
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.bmcreverseproxy -f docker-make.bmcreverseproxy.yaml --summary --build-only bmc-reverse-proxy-master 
+    - docker-make -x rule2,rule3 --dockerfile Dockerfile.console -f docker-make.console.yaml --summary --build-only metal-console-master 
   only:
-    - master
-
-branch:
-  stage: push
-  script:
-    - cp Dockerfile.bmcreverseproxy Dockerfile
-    - cp docker-make.bmcreverseproxy.yaml docker-make.yaml
-    - docker-make -ln -x rule2,rule3 -s
-    - cp Dockerfile.bmcproxy Dockerfile
-    - cp docker-make.bmcproxy.yaml docker-make.yaml
-    - docker-make -ln -x rule2,rule3 -s
-    - cp Dockerfile.console Dockerfile
-    - cp docker-make.console.yaml docker-make.yaml
-    - docker-make -ln -x rule2,rule3 -s
-  except:
     - master

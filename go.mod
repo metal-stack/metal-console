@@ -7,13 +7,12 @@ require (
 	github.com/gliderlabs/ssh v0.2.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kr/pty v1.1.8
-	github.com/metal-pod/metal-go v0.0.0-20190904133716-d7122fdd20c2
-	github.com/pkg/errors v0.8.1
-	go.mongodb.org/mongo-driver v1.1.1 // indirect
+	github.com/metal-stack/metal-go v0.3.1
+	github.com/pkg/errors v0.9.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.0.0-20190829043050-9756ffdc2472
 	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect
 )
 
-go 1.12
+go 1.13
