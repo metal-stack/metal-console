@@ -1,6 +1,3 @@
 bin
 .vscode
-metal-api
 .idea
-Dockerfile
-docker-make.yaml
