@@ -99,7 +99,10 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 
 		go func() {
 			for win := range winCh {
-				setWinSize(f, win.Width, win.Height)
+				err := setWinSize(f, win.Width, win.Height)
+				if err != nil {
+					p.log.Sugar().Errorw("Unable to set window size", "error", err)
+				}
 			}
 		}()
 
@@ -167,9 +170,10 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 	return metalIPMI
 }
 
-func setWinSize(f *os.File, w, h int) {
-	syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), uintptr(syscall.TIOCSWINSZ),
+func setWinSize(f *os.File, w, h int) error {
+	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), uintptr(syscall.TIOCSWINSZ),
 		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})))
+	return err
 }
 
 func loadHostKey() (gossh.Signer, error) {
