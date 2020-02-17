@@ -1,11 +1,11 @@
 package main
 
 import (
-	"git.f-i-ts.de/cloud-native/metal/metal-console/internal/console"
+	"github.com/metal-stack/metal-console/internal/console"
 	"os"
 
-	"git.f-i-ts.de/cloud-native/metallib/zapup"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/metal-stack/metal-lib/zapup"
 )
 
 var (
