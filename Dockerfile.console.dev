@@ -1,9 +1,0 @@
-FROM alpine:3.10
-
-LABEL maintainer="FI-TS Devops <devops@f-i-ts.de>"
-
-COPY bin/metal-console host-key ca.crt client.crt client.pem /
-
-RUN chmod 0600 /host-key /client.pem
-
-CMD ["/metal-console"]

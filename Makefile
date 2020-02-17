@@ -1,7 +1,7 @@
 .PHONY: default
 default: release;
 
-COMMONDIR := $(or ${COMMONDIR},../common)
+COMMONDIR := $(or ${COMMONDIR},../builder)
 
 include $(COMMONDIR)/Makefile.inc
 

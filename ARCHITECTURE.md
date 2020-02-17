@@ -11,7 +11,7 @@ The first one, called `metal-console`, is an SSH server listening on port `5222`
 It accepts SSH requests with machine IDs as user and opens an SSH connection to the corresponding machine.
 Example usage:
 ```
-ssh -p 5222 <machine-ID>@metal.test.fi-ts.io
+ssh -p 5222 <machine-ID>@<mgmt-host>
 ```
 
 First, it fetches the corresponding IPMI data and SSH public key(s) from `metal-api` for the requested machine as well as the address of the management service that is responsible for all machines of the requested machines partition. It then opens a connection to that management service and copies all stdin, stdout and stderr traffic to both directions.
