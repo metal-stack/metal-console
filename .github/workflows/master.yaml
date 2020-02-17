@@ -20,7 +20,7 @@ jobs:
         docker login -u metalstackci -p ${{ secrets.DOCKER_HUB_TOKEN }}
         docker build -f Dockerfile.console -t metalstack/metal-console .
         docker push metalstack/metal-console
-        docker build -f Dockerfile.bmcproxy -t metalstack/bmc-proxy} .
+        docker build -f Dockerfile.bmcproxy -t metalstack/bmc-proxy .
         docker push metalstack/bmc-proxy
         docker build -f Dockerfile.bmcreverseproxy -t metalstack/bmc-reverse-proxy .
         docker push metalstack/bmc-reverse-proxy
