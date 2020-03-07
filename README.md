@@ -7,16 +7,13 @@ On real hardware ipmi based lanplus sol (Serial Over LAN) will be used.
 
 To access the console execute:
 
-```
-
+```bash
 ssh -i <private key> <uuid of the machine>@<hostname of metal-console server>
-
 ```
 
 The metal-console will then lookup the given username as machine uuid on metal-api, request which console protocol to use.
 If the machine uuid is a valid machine, it will then use the provided private key to authenticate against the ssh public key 
 stored in the metal-api for this machine. If access is granted, the user will have access to the console.
-
 
 ## TODO
 
