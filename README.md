@@ -1,6 +1,6 @@
-# Metal Console
+# metal-console
 
-Metal Console provides access to the serial console of metal machines.
+`metal-console` provides access to the serial console of metal machines.
 This is achieved by acting as a bridge between ssh and the console protocol of the concrete machine.
 It will support either libvirt based console access, which is used in the development environment.
 On real hardware ipmi based lanplus sol (Serial Over LAN) will be used.
