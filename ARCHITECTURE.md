@@ -10,7 +10,8 @@ It is designed to serve also as an out-of-band (OOB) console if an proper admin 
 The first one, called `metal-console`, is an SSH server listening on port `5222` running on the metal-control-plane.
 It accepts SSH requests with machine IDs as user and opens an SSH connection to the corresponding machine.
 Example usage:
-```
+
+```bash
 ssh -p 5222 <machine-ID>@<mgmt-host>
 ```
 
@@ -24,7 +25,7 @@ which finally opens a connection to the requested machine.
 
 ## Traffic sequence
 
-```
+```bash
 User <---> metal-console <---> management-service <---> bmc-reverse-proxy <---> bmc-proxy <---> machine
            |_________metal-control-plane________|       |_______management-server_______|
 ```
