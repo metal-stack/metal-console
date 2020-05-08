@@ -227,7 +227,6 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 		RootCAs:            caCertPool,
 		InsecureSkipVerify: true,
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
 	if err != nil {
