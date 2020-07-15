@@ -55,6 +55,11 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	p.log.Sugar().Info("connection to", "machineID", machineID)
 	if metalIPMI == nil {
 		p.log.Sugar().Fatal("failed to receive IPMI data", "machineID", machineID)
+		return
+	}
+	if metalIPMI.Address == nil {
+		p.log.Sugar().Fatal("failed to receive IPMI.Address data", "machineID", machineID)
+		return
 	}
 	_, err := io.WriteString(s, fmt.Sprintf("Connecting to console of %q (%s)\n", machineID, *metalIPMI.Address))
 	if err != nil {
