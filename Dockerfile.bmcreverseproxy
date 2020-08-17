@@ -1,8 +1,8 @@
 FROM nginx:1.18
 
 COPY nginx.conf /etc/nginx/
-COPY server.crt /etc/ssl/certs/
-COPY server.key /etc/ssl/private/
-COPY client.crt /etc/nginx/
+COPY server.pem /etc/ssl/certs/
+COPY server-key.pem /etc/ssl/private/
+COPY client.pem /etc/nginx/
 
-RUN chmod 0600 /etc/ssl/private/server.key
+RUN chmod 0600 /etc/ssl/private/server-key.pem

@@ -210,14 +210,14 @@ func (cs *consoleServer) getIP(machineID string) (string, error) {
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
-	cert, err := tls.LoadX509KeyPair("/client.crt", "/client.pem")
+	cert, err := tls.LoadX509KeyPair("/client.pem", "/client-key.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load client certificate", "cert", "/client.crt", "key", "/client.pem", "error", err)
+		cs.log.Errorw("failed to load client certificate", "cert", "/client.pem", "key", "/client-key.pem", "error", err)
 	}
 
-	caCert, err := ioutil.ReadFile("/ca.crt")
+	caCert, err := ioutil.ReadFile("/ca.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load CA certificate", "cert", "/ca.crt", "error", err)
+		cs.log.Errorw("failed to load CA certificate", "cert", "/ca.pem", "error", err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)

@@ -2,9 +2,9 @@ FROM metalstack/builder:latest as builder
 
 FROM alpine:3.12
 
-COPY host-key ca.crt client.crt client.pem /
+COPY host-key.pem ca.pem client.pem client-key.pem /
 COPY --from=builder /work/bin/metal-console /
 
-RUN chmod 0600 /host-key /client.pem
+RUN chmod 0600 /host-key.pem /client-key.pem
 
 CMD ["/metal-console"]
