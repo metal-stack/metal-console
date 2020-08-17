@@ -1,0 +1,26 @@
+{
+  "CN": "metal-console",
+  "hosts": [
+    "localhost",
+    "metal-console",
+    "metal-console.svc",
+    "metal-console.svc.cluster.local",
+    "metal-pod.dev",
+    "*.metal-pod.dev",
+    "212.34.83.51",
+    "212.34.83.54"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 4096
+  },
+  "names": [
+    {
+      "C":  "DE",
+      "L":  "Munich",
+      "O":  "Metal-Stack",
+      "OU": "DevOps",
+      "ST": "Bavaria"
+    }
+  ]
+}

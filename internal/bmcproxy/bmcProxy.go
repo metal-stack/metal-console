@@ -183,7 +183,7 @@ func setWinSize(f *os.File, w, h int) error {
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/host-key")
+	bb, err := ioutil.ReadFile("/host-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}
