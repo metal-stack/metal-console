@@ -85,7 +85,7 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		port := addressParts[1]
 
 		command := "ipmitool"
-		args := []string{"-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", strconv.Quote(*metalIPMI.Password), "sol", "activate"}
+		args := []string{"-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", *metalIPMI.Password, "sol", "activate"}
 		p.log.Infow("console", "command", command, "args", args)
 
 		cmd = exec.Command(command, args...)
