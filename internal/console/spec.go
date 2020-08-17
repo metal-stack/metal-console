@@ -5,7 +5,7 @@ type Specification struct {
 	BindAddress            string `default:"localhost"`
 	MetalAPIURL            string `default:"http://localhost:8080" envconfig:"metal_api_url"`
 	Port                   int    `default:"2222"`
-	HMACKey                string `envconfig:"hmac_key"`
+	HMACKey                string `default:"" envconfig:"hmac_key"`
 	PublicKey              string `default:"" split_words:"true"`
 	BmcReverseProxyAddress string `default:"" split_words:"true"`
 }
