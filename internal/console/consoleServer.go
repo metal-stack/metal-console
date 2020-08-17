@@ -233,7 +233,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 		cs.log.Errorw("failed to dial via TCP", "address", mgmtServiceAddress, "error", err)
 		return nil
 	}
-	cs.log.Infow("Connected to: ", tcpConn.RemoteAddr())
+	cs.log.Infow("connect to management network", "remote addr", tcpConn.RemoteAddr())
 
 	return tcpConn
 }
