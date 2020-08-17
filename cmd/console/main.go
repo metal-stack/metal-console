@@ -18,17 +18,18 @@ var (
 func main() {
 	spec := &console.Specification{}
 	err := envconfig.Process("METAL_CONSOLE", spec)
+	logger := zapup.MustRootLogger().Sugar()
 	if err != nil {
-		zapup.MustRootLogger().Error(err.Error())
+		logger.Errorw("failed to read env config", "error", err)
 		os.Exit(1)
 	}
 
-	zapup.MustRootLogger().Sugar().Info("metal-console", "version", getVersionString(),
+	logger.Infow("metal-console", "version", getVersionString(),
 		"port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
 
-	s, err := console.NewServer(zapup.MustRootLogger(), spec)
+	s, err := console.NewServer(logger, spec)
 	if err != nil {
-		zapup.MustRootLogger().Error(err.Error())
+		logger.Errorw("failed to create metal-go driver", "error", err)
 		os.Exit(1)
 	}
 	s.Run()

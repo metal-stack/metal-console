@@ -25,9 +25,9 @@ type bmcProxy struct {
 	spec *Specification
 }
 
-func New(log *zap.Logger, spec *Specification) *bmcProxy {
+func New(log *zap.SugaredLogger, spec *Specification) *bmcProxy {
 	return &bmcProxy{
-		log:  log.Sugar(),
+		log:  log,
 		spec: spec,
 	}
 }

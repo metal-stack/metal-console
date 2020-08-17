@@ -21,21 +21,19 @@ type consoleServer struct {
 	log           *zap.SugaredLogger
 	machineClient *metalgo.Driver
 	spec          *Specification
-	mutex         sync.RWMutex
 	ips           *sync.Map
 }
 
-func NewServer(log *zap.Logger, spec *Specification) (*consoleServer, error) {
+func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
 	client, err := newMachineClient(spec.MetalAPIURL, spec.HMACKey)
 	if err != nil {
 		return nil, err
 	}
 	return &consoleServer{
-		log:           log.Sugar(),
+		log:           log,
 		machineClient: client,
 		spec:          spec,
-		ips:           &sync.Map{},
-		mutex:         sync.RWMutex{},
+		ips:           new(sync.Map),
 	}, nil
 }
 
