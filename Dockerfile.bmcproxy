@@ -10,5 +10,6 @@ COPY host-key.pem /
 COPY --from=builder /work/bin/bmc-proxy /
 
 RUN chmod 0600 /host-key.pem
+ENV ZAP_LEVEL=info
 
 CMD ["/bmc-proxy"]
