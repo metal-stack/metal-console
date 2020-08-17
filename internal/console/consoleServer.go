@@ -338,7 +338,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 func loadHostKey() (gossh.Signer, error) {
 	bb, err := ioutil.ReadFile("/host-key.pem")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load private key")
+		return nil, errors.Wrap(err, "failed to load private host key")
 	}
 	return gossh.ParsePrivateKey(bb)
 }
@@ -346,7 +346,8 @@ func loadHostKey() (gossh.Signer, error) {
 func loadPublicHostKey() (gossh.PublicKey, error) {
 	bb, err := ioutil.ReadFile("/host.pub")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load private key")
+		return nil, errors.Wrap(err, "failed to load public host key")
 	}
-	return gossh.ParsePublicKey(bb)
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
+	return pubKey, err
 }
