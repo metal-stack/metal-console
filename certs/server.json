@@ -7,8 +7,7 @@
     "metal-console.svc.cluster.local",
     "metal-pod.dev",
     "*.metal-pod.dev",
-    "212.34.83.51",
-    "212.34.83.54"
+    "fra-equ01-mgmt-service"
   ],
   "key": {
     "algo": "rsa",
