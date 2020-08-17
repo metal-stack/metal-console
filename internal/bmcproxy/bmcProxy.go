@@ -51,6 +51,7 @@ func (p *bmcProxy) Run() {
 }
 
 func (p *bmcProxy) sessionHandler(s ssh.Session) {
+	p.log.Infow("ssh session handler called", "user", s.User(), "env", s.Environ())
 	machineID := s.User()
 	metalIPMI := p.receiveIPMIData(s)
 	p.log.Infow("connection to", "machineID", machineID)
