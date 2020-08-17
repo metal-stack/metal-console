@@ -3,6 +3,6 @@ FROM nginx:1.18
 COPY nginx.conf /etc/nginx/
 COPY certs/server.pem /etc/ssl/certs/
 COPY certs/server-key.pem /etc/ssl/private/
-COPY certs/client.pem /etc/nginx/
+COPY ca.pem /etc/nginx/
 
 RUN chmod 0600 /etc/ssl/private/server-key.pem

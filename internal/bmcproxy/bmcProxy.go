@@ -164,14 +164,14 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 
 	if len(ipmiData) == 0 {
 		p.log.Error("failed to receive IPMI data")
-		os.Exit(1)
+		return nil
 	}
 
 	metalIPMI := &models.V1MachineIPMI{}
 	err := metalIPMI.UnmarshalBinary([]byte(ipmiData))
 	if err != nil {
 		p.log.Errorw("failed to unmarshal received IPMI data", "error", err)
-		os.Exit(1)
+		return nil
 	}
 
 	return metalIPMI
@@ -184,7 +184,7 @@ func setWinSize(f *os.File, w, h int) error {
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/host-key.pem")
+	bb, err := ioutil.ReadFile("/server-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}
