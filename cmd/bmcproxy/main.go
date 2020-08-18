@@ -17,14 +17,15 @@ var (
 func main() {
 	spec := &bmcproxy.Specification{}
 	err := envconfig.Process("BMC_PROXY", spec)
+	logger := zapup.MustRootLogger().Sugar()
 	if err != nil {
-		zapup.MustRootLogger().Error(err.Error())
+		logger.Errorw("failed to read env config", "error", err)
 		os.Exit(1)
 	}
 
-	zapup.MustRootLogger().Sugar().Info("bmc-proxy", "version", getVersionString(), "port", spec.Port, "devmode", spec.DevMode)
+	logger.Infow("bmc-proxy", "version", getVersionString(), "port", spec.Port, "devmode", spec.DevMode)
 
-	bmcproxy.New(zapup.MustRootLogger(), spec).Run()
+	bmcproxy.New(logger, spec).Run()
 }
 
 func getVersionString() string {

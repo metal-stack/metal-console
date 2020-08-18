@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -25,9 +24,9 @@ type bmcProxy struct {
 	spec *Specification
 }
 
-func New(log *zap.Logger, spec *Specification) *bmcProxy {
+func New(log *zap.SugaredLogger, spec *Specification) *bmcProxy {
 	return &bmcProxy{
-		log:  log.Sugar(),
+		log:  log,
 		spec: spec,
 	}
 }
@@ -51,6 +50,7 @@ func (p *bmcProxy) Run() {
 }
 
 func (p *bmcProxy) sessionHandler(s ssh.Session) {
+	p.log.Infow("ssh session handler called", "user", s.User(), "env", s.Environ())
 	machineID := s.User()
 	metalIPMI := p.receiveIPMIData(s)
 	p.log.Infow("connection to", "machineID", machineID)
@@ -84,7 +84,7 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		port := addressParts[1]
 
 		command := "ipmitool"
-		args := []string{"-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", strconv.Quote(*metalIPMI.Password), "sol", "activate"}
+		args := []string{"-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", *metalIPMI.Password, "sol", "activate"}
 		p.log.Infow("console", "command", command, "args", args)
 
 		cmd = exec.Command(command, args...)
@@ -163,14 +163,14 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 
 	if len(ipmiData) == 0 {
 		p.log.Error("failed to receive IPMI data")
-		os.Exit(1)
+		return nil
 	}
 
 	metalIPMI := &models.V1MachineIPMI{}
 	err := metalIPMI.UnmarshalBinary([]byte(ipmiData))
 	if err != nil {
 		p.log.Errorw("failed to unmarshal received IPMI data", "error", err)
-		os.Exit(1)
+		return nil
 	}
 
 	return metalIPMI
@@ -183,7 +183,7 @@ func setWinSize(f *os.File, w, h int) error {
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/host-key")
+	bb, err := ioutil.ReadFile("/server-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}

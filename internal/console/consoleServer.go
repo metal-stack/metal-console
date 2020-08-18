@@ -21,21 +21,19 @@ type consoleServer struct {
 	log           *zap.SugaredLogger
 	machineClient *metalgo.Driver
 	spec          *Specification
-	mutex         sync.RWMutex
 	ips           *sync.Map
 }
 
-func NewServer(log *zap.Logger, spec *Specification) (*consoleServer, error) {
+func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
 	client, err := newMachineClient(spec.MetalAPIURL, spec.HMACKey)
 	if err != nil {
 		return nil, err
 	}
 	return &consoleServer{
-		log:           log.Sugar(),
+		log:           log,
 		machineClient: client,
 		spec:          spec,
-		ips:           &sync.Map{},
-		mutex:         sync.RWMutex{},
+		ips:           new(sync.Map),
 	}, nil
 }
 
@@ -174,9 +172,15 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 }
 
 func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session) {
+	pubHostKey, err := loadPublicHostKey()
+	if err != nil {
+		cs.log.Errorw("failed to load public host key", "error", err)
+		runtime.Goexit()
+	}
+
 	sshConfig := &gossh.ClientConfig{
 		User:            machineID,
-		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
+		HostKeyCallback: gossh.FixedHostKey(pubHostKey),
 	}
 
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
@@ -210,7 +214,7 @@ func (cs *consoleServer) getIP(machineID string) (string, error) {
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
-	cert, err := tls.LoadX509KeyPair("/client.pem", "/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("/client.pem", "/client-key.pem")
 	if err != nil {
 		cs.log.Errorw("failed to load client certificate", "cert", "/client.pem", "key", "/client-key.pem", "error", err)
 	}
@@ -220,12 +224,14 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 		cs.log.Errorw("failed to load CA certificate", "cert", "/ca.pem", "error", err)
 	}
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	ok := caCertPool.AppendCertsFromPEM(caCert)
+	if !ok {
+		cs.log.Errorw("failed to append CA certificate")
+	}
 
 	tlsConfig := &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: true,
+		RootCAs:      caCertPool,
+		Certificates: []tls.Certificate{clientCert},
 	}
 
 	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
@@ -233,7 +239,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 		cs.log.Errorw("failed to dial via TCP", "address", mgmtServiceAddress, "error", err)
 		return nil
 	}
-	cs.log.Infow("Connected to: ", tcpConn.RemoteAddr())
+	cs.log.Infow("connect to management network", "remote addr", tcpConn.RemoteAddr())
 
 	return tcpConn
 }
@@ -328,9 +334,18 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/host-key")
+	bb, err := ioutil.ReadFile("/server-key.pem")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load private key")
+		return nil, errors.Wrap(err, "failed to load private host key")
 	}
 	return gossh.ParsePrivateKey(bb)
+}
+
+func loadPublicHostKey() (gossh.PublicKey, error) {
+	bb, err := ioutil.ReadFile("/server-key.pub")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load public host key")
+	}
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
+	return pubKey, err
 }
