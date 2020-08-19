@@ -214,14 +214,14 @@ func (cs *consoleServer) getIP(machineID string) (string, error) {
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
-	clientCert, err := tls.LoadX509KeyPair("/client.pem", "/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("/certs/client.pem", "/certs/client-key.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load client certificate", "cert", "/client.pem", "key", "/client-key.pem", "error", err)
+		cs.log.Errorw("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
 	}
 
-	caCert, err := ioutil.ReadFile("/ca.pem")
+	caCert, err := ioutil.ReadFile("/certs/ca.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load CA certificate", "cert", "/ca.pem", "error", err)
+		cs.log.Errorw("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
 	}
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(caCert)
@@ -334,7 +334,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/server-key.pem")
+	bb, err := ioutil.ReadFile("/certs/server-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private host key")
 	}
@@ -342,7 +342,7 @@ func loadHostKey() (gossh.Signer, error) {
 }
 
 func loadPublicHostKey() (gossh.PublicKey, error) {
-	bb, err := ioutil.ReadFile("/server-key.pub")
+	bb, err := ioutil.ReadFile("/certs/server-key.pub")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load public host key")
 	}
