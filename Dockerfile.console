@@ -2,9 +2,6 @@ FROM metalstack/builder:latest as builder
 
 FROM alpine:3.12
 
-COPY certs/server-key.pem certs/server-key.pub ca.pem certs/client.pem certs/client-key.pem /
 COPY --from=builder /work/bin/metal-console /
-
-RUN chmod 0600 /server-key.pem /client-key.pem
 
 CMD ["/metal-console"]

@@ -26,5 +26,3 @@ jobs:
         docker push metalstack/metal-console:pr-${GITHUB_TAG_NAME}
         docker build -f Dockerfile.bmcproxy -t metalstack/bmc-proxy:pr-${GITHUB_TAG_NAME} .
         docker push metalstack/bmc-proxy:pr-${GITHUB_TAG_NAME}
-        docker build -f Dockerfile.bmcreverseproxy -t metalstack/bmc-reverse-proxy:pr-${GITHUB_TAG_NAME} .
-        docker push metalstack/bmc-reverse-proxy:pr-${GITHUB_TAG_NAME}

@@ -6,10 +6,6 @@ RUN apk add \
         ipmitool \
         libvirt-client
 
-COPY certs/server-key.pem /
 COPY --from=builder /work/bin/bmc-proxy /
-
-RUN chmod 0600 /server-key.pem
-ENV ZAP_LEVEL=info
 
 CMD ["/bmc-proxy"]
