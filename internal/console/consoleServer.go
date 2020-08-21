@@ -87,10 +87,18 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		mgmtServiceAddress = cs.spec.BmcReverseProxyAddress
 	}
 
-	tcpConn := cs.connectToManagementNetwork(mgmtServiceAddress)
+	tcpConn, err := cs.connectToManagementNetwork(mgmtServiceAddress)
+	if err != nil {
+		cs.log.Errorw("failed to connect to management network", "error", err)
+		return
+	}
 	defer tcpConn.Close()
 
-	sshConn, sshClient, sshSession := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
+	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
+	if err != nil {
+		cs.log.Errorw("failed to establish SSH connection via already established TCP connection", "error", err)
+		return
+	}
 	defer func() {
 		sshSession.Close()
 		sshClient.Close()
@@ -107,8 +115,8 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	err = sshSession.Start("bash")
 	if err != nil {
-		cs.log.Fatalw("failed to start bash via SSH session", "error", err)
-		runtime.Goexit()
+		cs.log.Errorw("failed to start bash via SSH session", "error", err)
+		return
 	}
 
 	// wait till connection is closed
@@ -171,11 +179,11 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 	}
 }
 
-func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session) {
+func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session, error) {
 	pubHostKey, err := loadPublicHostKey()
 	if err != nil {
 		cs.log.Errorw("failed to load public host key", "error", err)
-		runtime.Goexit()
+		return nil, nil, nil, err
 	}
 
 	sshConfig := &gossh.ClientConfig{
@@ -186,7 +194,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
 	if err != nil {
 		cs.log.Fatalw("failed to open client connection", "mgmt-service address", mgmtServiceAddress, "error", err)
-		runtime.Goexit()
+		return nil, nil, nil, err
 	}
 
 	sshClient := gossh.NewClient(sshConn, chans, reqs)
@@ -194,10 +202,10 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	sshSession, err := sshClient.NewSession()
 	if err != nil {
 		cs.log.Fatalw("failed to create new SSH session", "error", err)
-		runtime.Goexit()
+		return nil, nil, nil, err
 	}
 
-	return sshConn, sshClient, sshSession
+	return sshConn, sshClient, sshSession, nil
 }
 
 func (cs *consoleServer) getIP(machineID string) (string, error) {
@@ -213,20 +221,23 @@ func (cs *consoleServer) getIP(machineID string) (string, error) {
 	return ip.(string), nil
 }
 
-func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *tls.Conn {
+func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
 	clientCert, err := tls.LoadX509KeyPair("/certs/client.pem", "/certs/client-key.pem")
 	if err != nil {
 		cs.log.Errorw("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
+		return nil, err
 	}
 
 	caCert, err := ioutil.ReadFile("/certs/ca.pem")
 	if err != nil {
 		cs.log.Errorw("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
+		return nil, err
 	}
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(caCert)
 	if !ok {
 		cs.log.Errorw("failed to append CA certificate")
+		return nil, errors.New("bad ca certificate")
 	}
 
 	tlsConfig := &tls.Config{
@@ -237,11 +248,11 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) *
 	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
 	if err != nil {
 		cs.log.Errorw("failed to dial via TCP", "address", mgmtServiceAddress, "error", err)
-		return nil
+		return nil, err
 	}
 	cs.log.Infow("connect to management network", "remote addr", tcpConn.RemoteAddr())
 
-	return tcpConn
+	return tcpConn, nil
 }
 
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {

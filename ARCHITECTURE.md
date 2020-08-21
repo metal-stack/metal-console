@@ -26,6 +26,6 @@ which finally opens a connection to the requested machine.
 ## Traffic sequence
 
 ```bash
-User <---> metal-console <---> management-service <---> bmc-reverse-proxy <---> bmc-proxy <---> machine
-           |_________metal-control-plane________|       |_______management-server_______|
+User <---> metal-console <---> bmc-reverse-proxy <---> bmc-proxy <---> machine
+                               |_______management-server_______|
 ```
