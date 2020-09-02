@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -40,7 +41,7 @@ func (p *bmcProxy) Run() {
 
 	hostKey, err := loadHostKey()
 	if err != nil {
-		p.log.Fatalw("cannot load host key", "error", err)
+		p.log.Errorw("cannot load host key", "error", err)
 		os.Exit(1)
 	}
 	s.AddHostKey(hostKey)
@@ -55,11 +56,11 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	metalIPMI := p.receiveIPMIData(s)
 	p.log.Infow("connection to", "machineID", machineID)
 	if metalIPMI == nil {
-		p.log.Fatalw("failed to receive IPMI data", "machineID", machineID)
+		p.log.Errorw("failed to receive IPMI data", "machineID", machineID)
 		return
 	}
 	if metalIPMI.Address == nil {
-		p.log.Fatalw("failed to receive IPMI.Address data", "machineID", machineID)
+		p.log.Errorw("failed to receive IPMI.Address data", "machineID", machineID)
 		return
 	}
 	_, err := io.WriteString(s, fmt.Sprintf("Connecting to console of %q (%s)\n", machineID, *metalIPMI.Address))
@@ -89,51 +90,8 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 
 		cmd = exec.Command(command, args...)
 	}
-	cmd.Env = os.Environ()
 	ptyReq, winCh, isPty := s.Pty()
-	if isPty {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("TERM=%s", ptyReq.Term))
-		f, err := pty.Start(cmd)
-		if err != nil {
-			p.log.Errorw("failed to execute command via PTY", "command", cmd.Path, "args", strings.Join(cmd.Args, " "), "error", err)
-			err = s.Exit(1)
-			if err != nil {
-				p.log.Errorw("failed to exit ssh session", "error", err)
-			}
-			return
-		}
-
-		go func() {
-			for win := range winCh {
-				err := setWinSize(f, win.Width, win.Height)
-				if err != nil {
-					p.log.Errorw("failed to set window size", "error", err)
-				}
-			}
-		}()
-
-		done := make(chan bool)
-
-		go func() {
-			_, err = io.Copy(f, s) // stdin
-			if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-				p.log.Errorw("failed to copy remote stdin to local", "error", err)
-			}
-			done <- true
-		}()
-
-		go func() {
-			_, err = io.Copy(s, f) // stdout
-			if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-				p.log.Errorw("failed to copy local stdout to remote", "error", err)
-			}
-			done <- true
-		}()
-
-		// wait till connection is closed
-		<-done
-
-	} else {
+	if !isPty {
 		_, err = io.WriteString(s, "No PTY requested.\n")
 		if err != nil {
 			p.log.Warnw("failed to write to console", "machineID", machineID)
@@ -142,7 +100,50 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		if err != nil {
 			p.log.Errorw("failed to exit ssh session", "error", err)
 		}
+		return
 	}
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("TERM=%s", ptyReq.Term))
+	f, err := pty.Start(cmd)
+	if err != nil {
+		p.log.Errorw("failed to execute command via PTY", "command", cmd.Path, "args", strings.Join(cmd.Args, " "), "error", err)
+		err = s.Exit(1)
+		if err != nil {
+			p.log.Errorw("failed to exit ssh session", "error", err)
+		}
+		return
+	}
+
+	go func() {
+		for win := range winCh {
+			err := setWinSize(f, win.Width, win.Height)
+			if err != nil {
+				p.log.Errorw("failed to set window size", "error", err)
+			}
+		}
+	}()
+
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	go func() {
+		_, err = io.Copy(f, s) // stdin
+		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
+			p.log.Errorw("failed to copy remote stdin to local", "error", err)
+		}
+		wg.Done()
+	}()
+
+	go func() {
+		_, err = io.Copy(s, f) // stdout
+		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
+			p.log.Errorw("failed to copy local stdout to remote", "error", err)
+		}
+		wg.Done()
+	}()
+
+	// wait till connection is closed
+	wg.Wait()
 }
 
 func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
