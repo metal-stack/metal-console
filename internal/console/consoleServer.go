@@ -53,7 +53,7 @@ func (cs *consoleServer) Run() {
 	s.AddHostKey(hostKey)
 
 	cs.log.Infow("starting ssh server", "port", cs.spec.Port)
-	cs.log.Error(s.ListenAndServe())
+	cs.log.Fatal(s.ListenAndServe())
 }
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {

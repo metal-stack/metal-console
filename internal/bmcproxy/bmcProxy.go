@@ -44,7 +44,7 @@ func (p *bmcProxy) Run() {
 	s.AddHostKey(hostKey)
 
 	p.log.Infow("starting ssh server", "port", p.spec.Port)
-	p.log.Error(s.ListenAndServe())
+	p.log.Fatal(s.ListenAndServe())
 }
 
 func (p *bmcProxy) sessionHandler(s ssh.Session) {
