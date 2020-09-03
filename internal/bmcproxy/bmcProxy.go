@@ -2,16 +2,14 @@ package bmcproxy
 
 import (
 	"fmt"
+	"github.com/metal-stack/go-hal/detect"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
+	"strconv"
 	"strings"
-	"syscall"
 	"time"
-	"unsafe"
 
-	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/metal-go/api/models"
 	"github.com/pkg/errors"
@@ -40,13 +38,13 @@ func (p *bmcProxy) Run() {
 
 	hostKey, err := loadHostKey()
 	if err != nil {
-		p.log.Fatalw("cannot load host key", "error", err)
+		p.log.Errorw("cannot load host key", "error", err)
 		os.Exit(1)
 	}
 	s.AddHostKey(hostKey)
 
 	p.log.Infow("starting ssh server", "port", p.spec.Port)
-	p.log.Fatal(s.ListenAndServe())
+	p.log.Error(s.ListenAndServe())
 }
 
 func (p *bmcProxy) sessionHandler(s ssh.Session) {
@@ -55,11 +53,11 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 	metalIPMI := p.receiveIPMIData(s)
 	p.log.Infow("connection to", "machineID", machineID)
 	if metalIPMI == nil {
-		p.log.Fatalw("failed to receive IPMI data", "machineID", machineID)
+		p.log.Errorw("failed to receive IPMI data", "machineID", machineID)
 		return
 	}
 	if metalIPMI.Address == nil {
-		p.log.Fatalw("failed to receive IPMI.Address data", "machineID", machineID)
+		p.log.Errorw("failed to receive IPMI.Address data", "machineID", machineID)
 		return
 	}
 	_, err := io.WriteString(s, fmt.Sprintf("Connecting to console of %q (%s)\n", machineID, *metalIPMI.Address))
@@ -67,81 +65,23 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		p.log.Warnw("failed to write to console", "machineID", machineID)
 	}
 
-	var cmd *exec.Cmd
-	if p.spec.DevMode {
-		_, err = io.WriteString(s, "Exit with '<Ctrl> 5'\n")
-		if err != nil {
-			p.log.Warnw("failed to write to console", "machineID", machineID)
-		}
-		cmd = exec.Command("virsh", "console", *metalIPMI.Address, "--force")
-	} else {
-		_, err = io.WriteString(s, "Exit with '~.'\n")
-		if err != nil {
-			p.log.Warnw("failed to write to console", "machineID", machineID)
-		}
-		addressParts := strings.Split(*metalIPMI.Address, ":")
-		host := addressParts[0]
-		port := addressParts[1]
-
-		command := "ipmitool"
-		args := []string{"-I", "lanplus", "-H", host, "-p", port, "-U", *metalIPMI.User, "-P", *metalIPMI.Password, "sol", "activate"}
-		p.log.Infow("console", "command", command, "args", args)
-
-		cmd = exec.Command(command, args...)
+	addressParts := strings.Split(*metalIPMI.Address, ":")
+	host := addressParts[0]
+	port, err := strconv.Atoi(addressParts[1])
+	if err != nil {
+		p.log.Errorw("invalid port", "port", port, "address", *metalIPMI.Address)
+		return
 	}
-	cmd.Env = os.Environ()
-	ptyReq, winCh, isPty := s.Pty()
-	if isPty {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("TERM=%s", ptyReq.Term))
-		f, err := pty.Start(cmd)
-		if err != nil {
-			p.log.Errorw("failed to execute command via PTY", "command", cmd.Path, "args", strings.Join(cmd.Args, " "), "error", err)
-			err = s.Exit(1)
-			if err != nil {
-				p.log.Errorw("failed to exit ssh session", "error", err)
-			}
-			return
-		}
 
-		go func() {
-			for win := range winCh {
-				err := setWinSize(f, win.Width, win.Height)
-				if err != nil {
-					p.log.Errorw("failed to set window size", "error", err)
-				}
-			}
-		}()
+	ob, err := detect.ConnectOutBand(host, port, *metalIPMI.User, *metalIPMI.Password)
+	if err != nil {
+		p.log.Errorw("failed to out-band connect", "host", host, "port", port, "machineID", machineID, "ipmiuser", *metalIPMI.User)
+		return
+	}
 
-		done := make(chan bool)
-
-		go func() {
-			_, err = io.Copy(f, s) // stdin
-			if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-				p.log.Errorw("failed to copy remote stdin to local", "error", err)
-			}
-			done <- true
-		}()
-
-		go func() {
-			_, err = io.Copy(s, f) // stdout
-			if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-				p.log.Errorw("failed to copy local stdout to remote", "error", err)
-			}
-			done <- true
-		}()
-
-		// wait till connection is closed
-		<-done
-
-	} else {
-		_, err = io.WriteString(s, "No PTY requested.\n")
-		if err != nil {
-			p.log.Warnw("failed to write to console", "machineID", machineID)
-		}
-		err = s.Exit(1)
-		if err != nil {
-			p.log.Errorw("failed to exit ssh session", "error", err)
-		}
+	err = ob.Console(s)
+	if err != nil {
+		p.log.Errorw("failed to access console", "machineID", machineID, "error", err)
 	}
 }
 
@@ -174,12 +114,6 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 	}
 
 	return metalIPMI
-}
-
-func setWinSize(f *os.File, w, h int) error {
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), uintptr(syscall.TIOCSWINSZ),
-		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})))
-	return err
 }
 
 func loadHostKey() (gossh.Signer, error) {
