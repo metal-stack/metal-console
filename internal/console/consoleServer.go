@@ -47,7 +47,7 @@ func (cs *consoleServer) Run() {
 
 	hostKey, err := loadHostKey()
 	if err != nil {
-		cs.log.Fatalw("failed to load host key", "error", err)
+		cs.log.Errorw("failed to load host key", "error", err)
 		runtime.Goexit()
 	}
 	s.AddHostKey(hostKey)
@@ -61,7 +61,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	ip, err := cs.getIP(machineID)
 	if err != nil {
-		cs.log.Fatalw("failed to get console", "machineID", machineID, "error", err)
+		cs.log.Errorw("failed to get console", "machineID", machineID, "error", err)
 	}
 	defer cs.ips.Delete(machineID)
 
@@ -193,7 +193,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
 	if err != nil {
-		cs.log.Fatalw("failed to open client connection", "mgmt-service address", mgmtServiceAddress, "error", err)
+		cs.log.Errorw("failed to open client connection", "mgmt-service address", mgmtServiceAddress, "error", err)
 		return nil, nil, nil, err
 	}
 
@@ -201,7 +201,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 
 	sshSession, err := sshClient.NewSession()
 	if err != nil {
-		cs.log.Fatalw("failed to create new SSH session", "error", err)
+		cs.log.Errorw("failed to create new SSH session", "error", err)
 		return nil, nil, nil, err
 	}
 
@@ -258,19 +258,19 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
 	m, err := cs.getMachineIPMI(machineID)
 	if err != nil {
-		cs.log.Fatalw("failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
+		cs.log.Errorw("failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
 		runtime.Goexit()
 	}
 
 	ipmiData, err := m.IPMI.MarshalBinary()
 	if err != nil {
-		cs.log.Fatalw("failed to marshal MetalIPMI", "error", err)
+		cs.log.Errorw("failed to marshal MetalIPMI", "error", err)
 		runtime.Goexit()
 	}
 
 	err = sshSession.Setenv("LC_IPMI_DATA", string(ipmiData))
 	if err != nil {
-		cs.log.Fatalw("failed to send IPMI data to BMC proxy", "error", err)
+		cs.log.Errorw("failed to send IPMI data to BMC proxy", "error", err)
 		runtime.Goexit()
 	}
 }
