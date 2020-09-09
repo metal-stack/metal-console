@@ -23,7 +23,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Infow("bmc-proxy", "version", getVersionString(), "port", spec.Port, "devmode", spec.DevMode)
+	logger.Infow("bmc-proxy", "version", getVersionString(), "port", spec.Port)
 
 	bmcproxy.New(logger, spec).Run()
 }
