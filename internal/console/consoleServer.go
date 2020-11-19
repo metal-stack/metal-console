@@ -262,7 +262,7 @@ func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, mach
 		runtime.Goexit()
 	}
 
-	ipmiData, err := m.IPMI.MarshalBinary()
+	ipmiData, err := m.Ipmi.MarshalBinary()
 	if err != nil {
 		cs.log.Errorw("failed to marshal MetalIPMI", "error", err)
 		runtime.Goexit()
