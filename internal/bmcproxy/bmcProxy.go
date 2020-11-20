@@ -2,13 +2,15 @@ package bmcproxy
 
 import (
 	"fmt"
-	"github.com/metal-stack/go-hal/connect"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/metal-stack/go-hal/connect"
+	halzap "github.com/metal-stack/go-hal/pkg/logger/zap"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/metal-go/api/models"
@@ -73,7 +75,7 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	ob, err := connect.OutBand(host, port, *metalIPMI.User, *metalIPMI.Password)
+	ob, err := connect.OutBand(host, port, *metalIPMI.User, *metalIPMI.Password, halzap.New(p.log))
 	if err != nil {
 		p.log.Errorw("failed to out-band connect", "host", host, "port", port, "machineID", machineID, "ipmiuser", *metalIPMI.User)
 		return
