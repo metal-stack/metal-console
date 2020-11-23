@@ -30,3 +30,7 @@ jobs:
         docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy .
         docker push ghcr.io/metal-stack/metal-console
         docker push ghcr.io/metal-stack/bmc-proxy
+    
+    - uses: release-drafter/release-drafter@v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
