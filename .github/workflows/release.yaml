@@ -11,17 +11,25 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Lint
-      uses: actions-contrib/golangci-lint@master
+
+    - name: Docker Login
+      uses: docker/login-action@v1
       with:
-        args: run
+        registry: ${{ secrets.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKER_REGISTRY_USER }}
+        password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.32.2
+
     - name: Branch name
       run: echo running on branch ${GITHUB_REF##*/}
     - name: Build the Docker images
       run: |
         export GITHUB_TAG_NAME=${GITHUB_REF##*/}
-        docker login -u metalstackci -p ${{ secrets.DOCKER_HUB_TOKEN }}
-        docker build -f Dockerfile.console -t metalstack/metal-console:${GITHUB_TAG_NAME} .
-        docker push metalstack/metal-console:${GITHUB_TAG_NAME}
-        docker build -f Dockerfile.bmcproxy -t metalstack/bmc-proxy:${GITHUB_TAG_NAME} .
-        docker push metalstack/bmc-proxy:${GITHUB_TAG_NAME}
+        docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console:${GITHUB_TAG_NAME} .
+        docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy:${GITHUB_TAG_NAME} .
+        docker push ghcr.io/metal-stack/metal-console:${GITHUB_TAG_NAME}
+        docker push ghcr.io/metal-stack/bmc-proxy:${GITHUB_TAG_NAME}

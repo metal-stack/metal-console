@@ -1,0 +1,32 @@
+name: Build latest image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Docker Login
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ secrets.DOCKER_REGISTRY }}
+        username: ${{ secrets.DOCKER_REGISTRY_USER }}
+        password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: v1.32.2
+
+    - name: Docker Image
+      run: |
+        docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console .
+        docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy .
+        docker push ghcr.io/metal-stack/metal-console
+        docker push ghcr.io/metal-stack/bmc-proxy
