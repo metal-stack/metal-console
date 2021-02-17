@@ -130,7 +130,7 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 	} else {
 		go func() {
 			_, err = io.Copy(stdin, callerSSHSession)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Errorw("failed to copy caller stdin to machine", "error", err)
 			}
 
@@ -144,7 +144,7 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 	} else {
 		go func() {
 			_, err = io.Copy(callerSSHSession, stdout)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Errorw("failed to copy machine stdout to caller", "error", err)
 			}
 
@@ -158,7 +158,7 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 	} else {
 		go func() {
 			_, err = io.Copy(callerSSHSession, stderr)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Errorw("failed to copy machine stderr to caller", "error", err)
 			}
 
@@ -243,6 +243,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 	tlsConfig := &tls.Config{
 		RootCAs:      caCertPool,
 		Certificates: []tls.Certificate{clientCert},
+		MinVersion:   tls.VersionTLS12,
 	}
 
 	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
