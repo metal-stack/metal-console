@@ -3,7 +3,6 @@ package bmcproxy
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -119,7 +118,7 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/server-key.pem")
+	bb, err := os.ReadFile("/server-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private key")
 	}
