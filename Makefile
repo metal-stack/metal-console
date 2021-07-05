@@ -23,6 +23,7 @@ bmcproxy:
 				  -X 'github.com/metal-stack/v.BuildDate=$(BUILDDATE)'" \
 		-o bin/bmc-proxy \
 		./cmd/bmcproxy
+	strip bin/bmc-proxy
 
 console:
 	$(GO) build \
@@ -34,3 +35,4 @@ console:
 				  -X 'github.com/metal-stack/v.BuildDate=$(BUILDDATE)'" \
 		-o bin/metal-console \
 		./cmd/console
+	strip bin/metal-console

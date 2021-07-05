@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"runtime"
 	"sync"
 
@@ -58,11 +58,6 @@ func (cs *consoleServer) Run() {
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
-
-	ip, err := cs.getIP(machineID)
-	if err != nil {
-		cs.log.Errorw("failed to get console", "machineID", machineID, "error", err)
-	}
 	defer cs.ips.Delete(machineID)
 
 	m, err := cs.getMachine(machineID)
@@ -105,7 +100,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		sshConn.Close()
 	}()
 
-	cs.sendIPMIData(sshSession, machineID, ip)
+	cs.sendIPMIData(sshSession, machineID)
 
 	cs.requestPTY(sshSession)
 
@@ -208,19 +203,6 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 	return sshConn, sshClient, sshSession, nil
 }
 
-func (cs *consoleServer) getIP(machineID string) (string, error) {
-	ip, ok := cs.ips.Load(machineID)
-	if !ok {
-		return "", fmt.Errorf("failed to fetch IP of machine %q", machineID)
-	}
-	if ip == nil {
-		cs.log.Errorw("requested machine IP is nil", "machineID", machineID)
-		return "", fmt.Errorf("machine %q not addressable", machineID)
-	}
-
-	return ip.(string), nil
-}
-
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
 	clientCert, err := tls.LoadX509KeyPair("/certs/client.pem", "/certs/client-key.pem")
 	if err != nil {
@@ -228,7 +210,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 		return nil, err
 	}
 
-	caCert, err := ioutil.ReadFile("/certs/ca.pem")
+	caCert, err := os.ReadFile("/certs/ca.pem")
 	if err != nil {
 		cs.log.Errorw("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
 		return nil, err
@@ -256,7 +238,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 	return tcpConn, nil
 }
 
-func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID, machineIP string) {
+func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID string) {
 	m, err := cs.getMachineIPMI(machineID)
 	if err != nil {
 		cs.log.Errorw("failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
@@ -307,7 +289,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	}
 
 	if cs.spec.DevMode() {
-		bb, err := ioutil.ReadFile(cs.spec.PublicKey)
+		bb, err := os.ReadFile(cs.spec.PublicKey)
 		if err != nil {
 			cs.log.Errorw("failed to read public key", "file", cs.spec.PublicKey)
 			return nil, err
@@ -346,7 +328,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 }
 
 func loadHostKey() (gossh.Signer, error) {
-	bb, err := ioutil.ReadFile("/certs/server-key.pem")
+	bb, err := os.ReadFile("/certs/server-key.pem")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load private host key")
 	}
@@ -354,7 +336,7 @@ func loadHostKey() (gossh.Signer, error) {
 }
 
 func loadPublicHostKey() (gossh.PublicKey, error) {
-	bb, err := ioutil.ReadFile("/certs/server-key.pub")
+	bb, err := os.ReadFile("/certs/server-key.pub")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load public host key")
 	}
