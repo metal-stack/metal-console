@@ -70,7 +70,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 
 	defer func() {
-		err = s.Exit(1)
+		err = s.Exit(0)
 		if err != nil {
 			cs.log.Errorw("failed to exit SSH session", "error", err)
 		}
