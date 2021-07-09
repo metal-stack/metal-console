@@ -3,6 +3,7 @@ package console
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,7 +13,6 @@ import (
 	metalgo "github.com/metal-stack/metal-go"
 
 	"github.com/gliderlabs/ssh"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -319,7 +319,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	for _, key := range resp.Allocation.SSHPubKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {
-			return nil, errors.Wrap(err, "error parsing public key")
+			return nil, fmt.Errorf("error parsing public key:%w", err)
 		}
 		pubKeys = append(pubKeys, pubKey)
 	}
@@ -330,7 +330,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 func loadHostKey() (gossh.Signer, error) {
 	bb, err := os.ReadFile("/certs/server-key.pem")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load private host key")
+		return nil, fmt.Errorf("failed to load private host key:%w", err)
 	}
 	return gossh.ParsePrivateKey(bb)
 }
@@ -338,7 +338,7 @@ func loadHostKey() (gossh.Signer, error) {
 func loadPublicHostKey() (gossh.PublicKey, error) {
 	bb, err := os.ReadFile("/certs/server-key.pub")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load public host key")
+		return nil, fmt.Errorf("failed to load public host key:%w", err)
 	}
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
 	return pubKey, err

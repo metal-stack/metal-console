@@ -13,7 +13,6 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/metal-go/api/models"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -120,7 +119,7 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 func loadHostKey() (gossh.Signer, error) {
 	bb, err := os.ReadFile("/server-key.pem")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load private key")
+		return nil, fmt.Errorf("failed to load private key:%w", err)
 	}
 	return gossh.ParsePrivateKey(bb)
 }

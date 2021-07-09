@@ -1,18 +1,13 @@
 package main
 
 import (
-	"github.com/metal-stack/metal-console/internal/console"
 	"os"
+
+	"github.com/metal-stack/metal-console/internal/console"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/metal-lib/zapup"
-)
-
-var (
-	version   = "devel"
-	revision  string
-	gitsha1   string
-	builddate string
+	"github.com/metal-stack/v"
 )
 
 func main() {
@@ -24,8 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Infow("metal-console", "version", getVersionString(),
-		"port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	logger.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
 
 	s, err := console.NewServer(logger, spec)
 	if err != nil {
@@ -33,18 +27,4 @@ func main() {
 		os.Exit(1)
 	}
 	s.Run()
-}
-
-func getVersionString() string {
-	var versionString = version
-	if gitsha1 != "" {
-		versionString += " (" + gitsha1 + ")"
-	}
-	if revision != "" {
-		versionString += ", " + revision
-	}
-	if builddate != "" {
-		versionString += ", " + builddate
-	}
-	return versionString
 }

@@ -1,17 +1,12 @@
 package main
 
 import (
+	"os"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/metal-console/internal/bmcproxy"
 	"github.com/metal-stack/metal-lib/zapup"
-	"os"
-)
-
-var (
-	version   = "devel"
-	revision  string
-	gitsha1   string
-	builddate string
+	"github.com/metal-stack/v"
 )
 
 func main() {
@@ -23,21 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Infow("bmc-proxy", "version", getVersionString(), "port", spec.Port)
+	logger.Infow("bmc-proxy", "version", v.V, "port", spec.Port)
 
 	bmcproxy.New(logger, spec).Run()
-}
-
-func getVersionString() string {
-	var versionString = version
-	if gitsha1 != "" {
-		versionString += " (" + gitsha1 + ")"
-	}
-	if revision != "" {
-		versionString += ", " + revision
-	}
-	if builddate != "" {
-		versionString += ", " + builddate
-	}
-	return versionString
 }
