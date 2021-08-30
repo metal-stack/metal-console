@@ -58,7 +58,7 @@ func (cs *consoleServer) Run() {
 	cs.log.Fatal(s.ListenAndServe())
 }
 
-const tokenEnv = "LC_METAL_STACK_OIDC_TOKEN"
+const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
@@ -81,7 +81,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		environ := s.Environ()
 		token := ""
 		for _, env := range environ {
-			if strings.HasPrefix(env, tokenEnv+"=") {
+			if strings.HasPrefix(env, oidcEnv+"=") {
 				parts := strings.Split(env, "=")
 				if len(parts) == 2 {
 					token = parts[1]
@@ -89,7 +89,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			}
 		}
 		if token == "" {
-			cs.log.Errorw("unable to find OIDC token stored in %s env variable which is required for firewall console access", tokenEnv)
+			cs.log.Errorw("unable to find OIDC token stored in %s env variable which is required for firewall console access", oidcEnv)
 		}
 		// TODO ask metal-api if this token is valid and provider-tenant and metal-admin group member
 	}
