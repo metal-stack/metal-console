@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	metalgo "github.com/metal-stack/metal-go"
+	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/gliderlabs/ssh"
 	"go.uber.org/zap"
@@ -56,6 +58,8 @@ func (cs *consoleServer) Run() {
 	cs.log.Fatal(s.ListenAndServe())
 }
 
+const tokenEnv = "LC_METAL_STACK_OIDC_TOKEN"
+
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 	defer cs.ips.Delete(machineID)
@@ -67,6 +71,27 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		if err != nil {
 			cs.log.Errorw("failed to exit SSH session", "error", err)
 		}
+	}
+
+	// If the machine is a firewall
+	// check if the ssh session contains the oidc token and the user is member of providertenant
+	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
+	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
+	if m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
+		environ := s.Environ()
+		token := ""
+		for _, env := range environ {
+			if strings.HasPrefix(env, tokenEnv+"=") {
+				parts := strings.Split(env, "=")
+				if len(parts) == 2 {
+					token = parts[1]
+				}
+			}
+		}
+		if token == "" {
+			cs.log.Errorw("unable to find OIDC token stored in %s env variable which is required for firewall console access", tokenEnv)
+		}
+		// TODO ask metal-api if this token is valid and provider-tenant and metal-admin group member
 	}
 
 	defer func() {
