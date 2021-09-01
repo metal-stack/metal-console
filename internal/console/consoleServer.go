@@ -20,22 +20,22 @@ import (
 )
 
 type consoleServer struct {
-	log           *zap.SugaredLogger
-	machineClient *metalgo.Driver
-	spec          *Specification
-	ips           *sync.Map
+	log    *zap.SugaredLogger
+	client *metalgo.Driver
+	spec   *Specification
+	ips    *sync.Map
 }
 
 func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
-	client, err := newMachineClient(spec.MetalAPIURL, spec.HMACKey)
+	client, err := newClient(spec.MetalAPIURL, spec.HMACKey)
 	if err != nil {
 		return nil, err
 	}
 	return &consoleServer{
-		log:           log,
-		machineClient: client,
-		spec:          spec,
-		ips:           new(sync.Map),
+		log:    log,
+		client: client,
+		spec:   spec,
+		ips:    new(sync.Map),
 	}, nil
 }
 
@@ -90,8 +90,32 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 		if token == "" {
 			cs.log.Errorw("unable to find OIDC token stored in %s env variable which is required for firewall console access", oidcEnv)
+			err = s.Exit(1)
+			if err != nil {
+				cs.log.Errorw("failed to exit SSH session", "error", err)
+			}
 		}
-		// TODO ask metal-api if this token is valid and provider-tenant and metal-admin group member
+		user, err := cs.client.UserGet(token)
+		if err != nil {
+			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
+			err = s.Exit(1)
+			if err != nil {
+				cs.log.Errorw("failed to exit SSH session", "error", err)
+			}
+		}
+		isAdmin := false
+		for _, g := range user.User.Groups {
+			if g == cs.spec.AdminGroupName {
+				isAdmin = true
+			}
+		}
+		if !isAdmin {
+			cs.log.Errorw("you are not member of required admin group to access this machine console", "machineID", machineID, "group", cs.spec.AdminGroupName)
+			err = s.Exit(1)
+			if err != nil {
+				cs.log.Errorw("failed to exit SSH session", "error", err)
+			}
+		}
 	}
 
 	defer func() {

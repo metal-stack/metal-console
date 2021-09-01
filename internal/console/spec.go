@@ -8,6 +8,7 @@ type Specification struct {
 	HMACKey                string `default:"" envconfig:"hmac_key"`
 	PublicKey              string `default:"" split_words:"true"`
 	BmcReverseProxyAddress string `default:"" split_words:"true"`
+	AdminGroupName         string `default:"" envconfig:"admin_group_name" split_words:"true"`
 }
 
 func (s *Specification) DevMode() bool {
