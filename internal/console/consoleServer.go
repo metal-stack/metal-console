@@ -75,10 +75,8 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	m, err := cs.getMachine(machineID)
 	if err != nil {
 		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
-		err = s.Exit(1)
-		if err != nil {
-			cs.log.Errorw("failed to exit SSH session", "error", err)
-		}
+		cs.exitSession(s)
+		return
 	}
 
 	// If the machine is a firewall
@@ -98,30 +96,21 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 		if token == "" {
 			_, _ = io.WriteString(s, fmt.Sprintf("unable to find OIDC token stored in %s env variable which is required for firewall console access\n", oidcEnv))
-			err = s.Exit(1)
-			if err != nil {
-				cs.log.Errorw("failed to exit SSH session", "error", err)
-			}
+			cs.exitSession(s)
 			return
 		}
 		uc, err := cs.userClient(token)
 		if err != nil {
-			_, _ = io.WriteString(s, "techical error\n")
+			_, _ = io.WriteString(s, "technical error\n")
 			cs.log.Errorw("failed to create user client", "error", err)
-			err = s.Exit(1)
-			if err != nil {
-				cs.log.Errorw("failed to exit SSH session", "error", err)
-			}
+			cs.exitSession(s)
 			return
 		}
 		user, err := uc.Me()
 		if err != nil {
 			_, _ = io.WriteString(s, "given oidc token is invalid\n")
 			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
-			err = s.Exit(1)
-			if err != nil {
-				cs.log.Errorw("failed to exit SSH session", "error", err)
-			}
+			cs.exitSession(s)
 			return
 		}
 		isAdmin := false
@@ -132,20 +121,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 		if !isAdmin {
 			_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console\n", cs.spec.AdminGroupName))
-			cs.log.Errorw("you are not member of required admin group to access this machine console", "machineID", machineID, "group", cs.spec.AdminGroupName)
-			err = s.Exit(1)
-			if err != nil {
-				cs.log.Errorw("failed to exit SSH session", "error", err)
-			}
+			cs.exitSession(s)
 			return
 		}
 	}
 
 	defer func() {
-		err = s.Exit(1)
-		if err != nil {
-			cs.log.Errorw("failed to exit SSH session", "error", err)
-		}
+		cs.exitSession(s)
 	}()
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
@@ -188,6 +170,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till connection is closed
 	<-done
+}
+
+func (cs *consoleServer) exitSession(session ssh.Session) {
+	err := session.Exit(1)
+	if err != nil {
+		cs.log.Errorw("failed to exit SSH session", "error", err)
+	}
 }
 
 func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSession *gossh.Session, done chan<- bool) {
