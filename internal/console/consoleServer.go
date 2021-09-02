@@ -114,7 +114,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			}
 			return
 		}
-		user, err := uc.UserGet()
+		user, err := uc.Me()
 		if err != nil {
 			_, _ = io.WriteString(s, "given oidc token is invalid\n")
 			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
@@ -125,7 +125,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			return
 		}
 		isAdmin := false
-		for _, g := range user.User.Groups {
+		for _, g := range user.Groups {
 			if g == cs.spec.AdminGroupName {
 				isAdmin = true
 			}
