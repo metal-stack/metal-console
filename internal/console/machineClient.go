@@ -7,7 +7,7 @@ import (
 	"github.com/metal-stack/metal-go/api/models"
 )
 
-func newMachineClient(metalAPIURL string, hmac string) (*metalgo.Driver, error) {
+func newClient(metalAPIURL string, hmac string) (*metalgo.Driver, error) {
 	driver, err := metalgo.NewDriver(metalAPIURL, "", hmac)
 	if err != nil {
 		return nil, err
@@ -19,7 +19,7 @@ func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse
 	mfr := &metalgo.MachineFindRequest{
 		ID: &machineID,
 	}
-	resp, err := cs.machineClient.MachineFind(mfr)
+	resp, err := cs.client.MachineFind(mfr)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (cs *consoleServer) getMachine(machineID string) (*models.V1MachineResponse
 }
 
 func (cs *consoleServer) getMachineIPMI(machineID string) (*models.V1MachineIPMIResponse, error) {
-	resp, err := cs.machineClient.MachineIPMIGet(machineID)
+	resp, err := cs.client.MachineIPMIGet(machineID)
 	if err != nil {
 		return nil, err
 	}

@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	metalgo "github.com/metal-stack/metal-go"
+	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/gliderlabs/ssh"
 	"go.uber.org/zap"
@@ -18,23 +20,31 @@ import (
 )
 
 type consoleServer struct {
-	log           *zap.SugaredLogger
-	machineClient *metalgo.Driver
-	spec          *Specification
-	ips           *sync.Map
+	log    *zap.SugaredLogger
+	client *metalgo.Driver
+	spec   *Specification
+	ips    *sync.Map
 }
 
 func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
-	client, err := newMachineClient(spec.MetalAPIURL, spec.HMACKey)
+	client, err := newClient(spec.MetalAPIURL, spec.HMACKey)
 	if err != nil {
 		return nil, err
 	}
 	return &consoleServer{
-		log:           log,
-		machineClient: client,
-		spec:          spec,
-		ips:           new(sync.Map),
+		log:    log,
+		client: client,
+		spec:   spec,
+		ips:    new(sync.Map),
 	}, nil
+}
+
+func (cs *consoleServer) userClient(token string) (*metalgo.Driver, error) {
+	driver, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
+	if err != nil {
+		return nil, err
+	}
+	return driver, nil
 }
 
 // Run starts ssh server and listen for console connections.
@@ -56,6 +66,8 @@ func (cs *consoleServer) Run() {
 	cs.log.Fatal(s.ListenAndServe())
 }
 
+const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
+
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 	defer cs.ips.Delete(machineID)
@@ -63,17 +75,59 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	m, err := cs.getMachine(machineID)
 	if err != nil {
 		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
-		err = s.Exit(1)
+		cs.exitSession(s)
+		return
+	}
+
+	// If the machine is a firewall
+	// check if the ssh session contains the oidc token and the user is member of admin group
+	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
+	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
+	if m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
+		environ := s.Environ()
+		token := ""
+		for _, env := range environ {
+			if strings.HasPrefix(env, oidcEnv+"=") {
+				parts := strings.Split(env, "=")
+				if len(parts) == 2 {
+					token = parts[1]
+				}
+			}
+		}
+		if token == "" {
+			_, _ = io.WriteString(s, fmt.Sprintf("unable to find OIDC token stored in %s env variable which is required for firewall console access\n", oidcEnv))
+			cs.exitSession(s)
+			return
+		}
+		uc, err := cs.userClient(token)
 		if err != nil {
-			cs.log.Errorw("failed to exit SSH session", "error", err)
+			_, _ = io.WriteString(s, "technical error\n")
+			cs.log.Errorw("failed to create user client", "error", err)
+			cs.exitSession(s)
+			return
+		}
+		user, err := uc.Me()
+		if err != nil {
+			_, _ = io.WriteString(s, "given oidc token is invalid\n")
+			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
+			cs.exitSession(s)
+			return
+		}
+		isAdmin := false
+		for _, g := range user.Groups {
+			if g == cs.spec.AdminGroupName {
+				isAdmin = true
+			}
+		}
+		if !isAdmin {
+			_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console\n", cs.spec.AdminGroupName))
+			cs.exitSession(s)
+			return
 		}
 	}
 
 	defer func() {
-		err = s.Exit(1)
-		if err != nil {
-			cs.log.Errorw("failed to exit SSH session", "error", err)
-		}
+		cs.exitSession(s)
 	}()
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
@@ -116,6 +170,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till connection is closed
 	<-done
+}
+
+func (cs *consoleServer) exitSession(session ssh.Session) {
+	err := session.Exit(1)
+	if err != nil {
+		cs.log.Errorw("failed to exit SSH session", "error", err)
+	}
 }
 
 func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSession *gossh.Session, done chan<- bool) {
