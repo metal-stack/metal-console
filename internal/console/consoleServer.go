@@ -89,19 +89,22 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			}
 		}
 		if token == "" {
-			cs.log.Errorw("unable to find OIDC token stored in %s env variable which is required for firewall console access", oidcEnv)
+			_, _ = io.WriteString(s, fmt.Sprintf("unable to find OIDC token stored in %s env variable which is required for firewall console access", oidcEnv))
 			err = s.Exit(1)
 			if err != nil {
 				cs.log.Errorw("failed to exit SSH session", "error", err)
 			}
+			return
 		}
 		user, err := cs.client.UserGet(token)
 		if err != nil {
+			_, _ = io.WriteString(s, "given oidc token is invalid")
 			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
 			err = s.Exit(1)
 			if err != nil {
 				cs.log.Errorw("failed to exit SSH session", "error", err)
 			}
+			return
 		}
 		isAdmin := false
 		for _, g := range user.User.Groups {
@@ -110,11 +113,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			}
 		}
 		if !isAdmin {
+			_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName))
 			cs.log.Errorw("you are not member of required admin group to access this machine console", "machineID", machineID, "group", cs.spec.AdminGroupName)
 			err = s.Exit(1)
 			if err != nil {
 				cs.log.Errorw("failed to exit SSH session", "error", err)
 			}
+			return
 		}
 	}
 
