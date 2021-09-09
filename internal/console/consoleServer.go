@@ -182,47 +182,42 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 	machineID := s.User()
 	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-ticker.C:
-				cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
 
-				m, err := cs.client.MachineGet(machineID)
-				if err != nil {
-					cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
-					return
-				}
-				if m.Machine == nil {
-					cs.log.Warnw("unable to load machine is nil", "machineID", machineID)
-					return
-				}
-				if m.Machine.Allocation == nil {
-					cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
-					cs.pubKeys.Delete(machineID)
-					cs.exitSession(s)
-					return
-				}
-				keys, ok := cs.pubKeys.Load(machineID)
-				if !ok {
-					cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
-					cs.exitSession(s)
-					return
-				}
-				sshKeys := keys.([]string)
-				if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
-					cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
-					cs.exitSession(s)
-					return
-				}
+			m, err := cs.client.MachineGet(machineID)
+			if err != nil {
+				cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
+			}
+			if m.Machine == nil {
+				cs.log.Warnw("unable to load machine is nil", "machineID", machineID)
+			}
+			if m.Machine.Allocation == nil {
+				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
+				cs.pubKeys.Delete(machineID)
+				cs.exitSession(s)
+				done <- true
+			}
+			keys, ok := cs.pubKeys.Load(machineID)
+			if !ok {
+				cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
+				cs.exitSession(s)
+				done <- true
+			}
+			sshKeys := keys.([]string)
+			if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
+				cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
+				cs.exitSession(s)
+				done <- true
 			}
 		}
-	}()
-	ticker.Stop()
-	done <- true
+	}
 }
 
 func (cs *consoleServer) exitSession(session ssh.Session) {
