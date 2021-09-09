@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	metalgo "github.com/metal-stack/metal-go"
 	"github.com/metal-stack/metal-go/api/models"
@@ -20,10 +22,11 @@ import (
 )
 
 type consoleServer struct {
-	log    *zap.SugaredLogger
-	client *metalgo.Driver
-	spec   *Specification
-	ips    *sync.Map
+	log     *zap.SugaredLogger
+	client  *metalgo.Driver
+	spec    *Specification
+	ips     *sync.Map
+	pubKeys *sync.Map
 }
 
 func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
@@ -32,10 +35,11 @@ func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, err
 		return nil, err
 	}
 	return &consoleServer{
-		log:    log,
-		client: client,
-		spec:   spec,
-		ips:    new(sync.Map),
+		log:     log,
+		client:  client,
+		spec:    spec,
+		ips:     new(sync.Map),
+		pubKeys: new(sync.Map),
 	}, nil
 }
 
@@ -126,10 +130,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 	}
 
-	defer func() {
-		cs.exitSession(s)
-	}()
-
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
 	if cs.spec.DevMode() {
@@ -162,6 +162,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	cs.redirectIO(s, sshSession, done)
 
+	// check periodically if the session is still allowed.
+	go cs.terminateIfPublicKeysChanged(s)
+
 	err = sshSession.Start("bash")
 	if err != nil {
 		cs.log.Errorw("failed to start bash via SSH session", "error", err)
@@ -170,6 +173,57 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till connection is closed
 	<-done
+}
+
+func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
+	machineID := s.User()
+	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
+	done := make(chan bool)
+	for {
+		select {
+		case <-done:
+			return
+		case <-s.Context().Done():
+			cs.log.Infow("connection closed", "machine", machineID)
+			done <- true
+			continue
+		case <-ticker.C:
+			cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
+
+			m, err := cs.client.MachineGet(machineID)
+			if err != nil {
+				cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
+			}
+			if m.Machine == nil {
+				cs.log.Warnw("unable to load machine is nil", "machineID", machineID)
+			}
+			if m.Machine.Allocation == nil {
+				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
+				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
+				cs.pubKeys.Delete(machineID)
+				cs.exitSession(s)
+				done <- true
+				continue
+			}
+			keys, ok := cs.pubKeys.Load(machineID)
+			if !ok {
+				_, _ = io.WriteString(s, "public key of machine removed, terminating console session\n")
+				cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
+				cs.exitSession(s)
+				done <- true
+				continue
+			}
+			sshKeys := keys.([]string)
+			if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
+				_, _ = io.WriteString(s, "public key of machine changed, terminating console session\n")
+				cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
+				cs.exitSession(s)
+				done <- true
+				continue
+			}
+		}
+	}
 }
 
 func (cs *consoleServer) exitSession(session ssh.Session) {
@@ -374,8 +428,13 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	if privateIP == "" {
 		return nil, fmt.Errorf("failed to detect private IP of machine:%s", machineID)
 	}
+
 	cs.ips.Store(machineID, privateIP)
 
+	_, ok := cs.pubKeys.Load(machineID)
+	if !ok {
+		cs.pubKeys.Store(machineID, resp.Allocation.SSHPubKeys)
+	}
 	var pubKeys []ssh.PublicKey
 	for _, key := range resp.Allocation.SSHPubKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
