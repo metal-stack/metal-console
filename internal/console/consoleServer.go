@@ -166,14 +166,14 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	cs.redirectIO(s, sshSession, done)
 
+	// check periodically if the session is still allowed.
+	go cs.terminateIfPublicKeysChanged(s)
+
 	err = sshSession.Start("bash")
 	if err != nil {
 		cs.log.Errorw("failed to start bash via SSH session", "error", err)
 		return
 	}
-
-	// check periodically if the session is still allowed.
-	go cs.terminateIfPublicKeysChanged(s)
 
 	// wait till connection is closed
 	<-done
