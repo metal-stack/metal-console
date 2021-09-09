@@ -199,6 +199,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 				cs.log.Warnw("unable to load machine is nil", "machineID", machineID)
 			}
 			if m.Machine.Allocation == nil {
+				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
 				cs.pubKeys.Delete(machineID)
 				cs.exitSession(s)
@@ -207,6 +208,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			}
 			keys, ok := cs.pubKeys.Load(machineID)
 			if !ok {
+				_, _ = io.WriteString(s, "public key of machine removed, terminating console session\n")
 				cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				done <- true
@@ -214,6 +216,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			}
 			sshKeys := keys.([]string)
 			if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
+				_, _ = io.WriteString(s, "public key of machine changed, terminating console session\n")
 				cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				done <- true
