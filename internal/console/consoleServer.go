@@ -186,6 +186,10 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		select {
 		case <-done:
 			return
+		case <-s.Context().Done():
+			cs.log.Infow("connection closed", "machine", machineID)
+			done <- true
+			continue
 		case <-ticker.C:
 			cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
 
