@@ -181,7 +181,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 	machineID := s.User()
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
 	done := make(chan bool)
 	for {
@@ -203,18 +203,21 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 				cs.pubKeys.Delete(machineID)
 				cs.exitSession(s)
 				done <- true
+				continue
 			}
 			keys, ok := cs.pubKeys.Load(machineID)
 			if !ok {
 				cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				done <- true
+				continue
 			}
 			sshKeys := keys.([]string)
 			if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
 				cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				done <- true
+				continue
 			}
 		}
 	}
