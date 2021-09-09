@@ -130,10 +130,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 	}
 
-	defer func() {
-		cs.exitSession(s)
-	}()
-
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
 	if cs.spec.DevMode() {
