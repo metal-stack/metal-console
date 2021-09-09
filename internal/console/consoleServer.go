@@ -189,6 +189,8 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			case <-done:
 				return
 			case <-ticker.C:
+				cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
+
 				m, err := cs.client.MachineGet(machineID)
 				if err != nil {
 					cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
