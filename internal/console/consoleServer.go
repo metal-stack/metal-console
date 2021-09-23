@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -22,11 +21,11 @@ import (
 )
 
 type consoleServer struct {
-	log     *zap.SugaredLogger
-	client  *metalgo.Driver
-	spec    *Specification
-	ips     *sync.Map
-	pubKeys *sync.Map
+	log        *zap.SugaredLogger
+	client     *metalgo.Driver
+	spec       *Specification
+	ips        *sync.Map
+	createdAts *sync.Map
 }
 
 func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
@@ -35,11 +34,11 @@ func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, err
 		return nil, err
 	}
 	return &consoleServer{
-		log:     log,
-		client:  client,
-		spec:    spec,
-		ips:     new(sync.Map),
-		pubKeys: new(sync.Map),
+		log:        log,
+		client:     client,
+		spec:       spec,
+		ips:        new(sync.Map),
+		createdAts: new(sync.Map),
 	}, nil
 }
 
@@ -201,21 +200,21 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			if m.Machine.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
-				cs.pubKeys.Delete(machineID)
+				cs.createdAts.Delete(machineID)
 				cs.exitSession(s)
 				done <- true
 				continue
 			}
-			keys, ok := cs.pubKeys.Load(machineID)
+			createdAt, ok := cs.createdAts.Load(machineID)
 			if !ok {
-				_, _ = io.WriteString(s, "public key of machine removed, terminating console session\n")
-				cs.log.Infow("no ssh public key stored anymore, terminating ssh session", "machineID", machineID)
+				_, _ = io.WriteString(s, "machine allocation not known, terminating console session\n")
+				cs.log.Infow("machine allocation not known, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				done <- true
 				continue
 			}
-			sshKeys := keys.([]string)
-			if !reflect.DeepEqual(sshKeys, m.Machine.Allocation.SSHPubKeys) {
+
+			if createdAt != m.Machine.Allocation.Created.String() {
 				_, _ = io.WriteString(s, "public key of machine changed, terminating console session\n")
 				cs.log.Infow("ssh public keys changed, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
@@ -431,9 +430,9 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 
 	cs.ips.Store(machineID, privateIP)
 
-	_, ok := cs.pubKeys.Load(machineID)
+	_, ok := cs.createdAts.Load(machineID)
 	if !ok {
-		cs.pubKeys.Store(machineID, resp.Allocation.SSHPubKeys)
+		cs.createdAts.Store(machineID, resp.Allocation.Created.String())
 	}
 	var pubKeys []ssh.PublicKey
 	for _, key := range resp.Allocation.SSHPubKeys {
