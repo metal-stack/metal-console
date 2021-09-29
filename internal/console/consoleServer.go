@@ -56,6 +56,7 @@ func (cs *consoleServer) Run() {
 		Addr:             fmt.Sprintf(":%d", cs.spec.Port),
 		Handler:          cs.sessionHandler,
 		PublicKeyHandler: cs.authHandler,
+		IdleTimeout:      time.Minute * 10,
 	}
 
 	hostKey, err := loadHostKey()
