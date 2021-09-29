@@ -187,8 +187,6 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-s.Context().Done():
 			cs.log.Infow("connection closed", "machine", machineID)
 			_, _ = io.WriteString(s, "idle timeout, terminating console session\n")
-			cs.createdAts.Delete(machineID)
-			cs.exitSession(s)
 			done <- true
 			continue
 		case <-ticker.C:
