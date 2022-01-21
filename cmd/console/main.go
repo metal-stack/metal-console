@@ -5,6 +5,7 @@ import (
 
 	"github.com/metal-stack/metal-console/internal/console"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/v"
@@ -13,7 +14,12 @@ import (
 func main() {
 	spec := &console.Specification{}
 	err := envconfig.Process("METAL_CONSOLE", spec)
-	logger, _ := zap.NewProduction()
+
+	cfg := zap.NewProductionConfig()
+	cfg.EncoderConfig.TimeKey = "timestamp"
+	cfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+
+	logger, _ := cfg.Build()
 	sugar := logger.Sugar()
 	if err != nil {
 		sugar.Errorw("failed to read env config", "error", err)
