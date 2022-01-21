@@ -176,56 +176,47 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 	machineID := s.User()
+	createdAt, ok := cs.createdAts.Load(machineID)
+	if !ok {
+		_, _ = io.WriteString(s, "machine allocation not known, terminating console session\n")
+		cs.log.Infow("machine allocation not known, terminating ssh session", "machineID", machineID)
+		cs.exitSession(s)
+		return
+	}
+
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
-	done := make(chan bool)
+
 	for {
 		select {
-		case <-done:
-			return
 		case <-s.Context().Done():
-			cs.log.Infow("connection closed", "machine", machineID)
-			done <- true
-			continue
+			cs.log.Infow("connection closed", "machineID", machineID)
+			return
 		case <-ticker.C:
-			cs.log.Infow("checking if machine is still owned by the same user", "machine", machineID)
+			cs.log.Infow("checking if machine is still owned by the same user", "machineID", machineID)
 
 			m, err := cs.client.MachineGet(machineID)
 			if err != nil {
-				cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
+				cs.log.Errorw("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
 			if m.Machine == nil {
 				_, _ = io.WriteString(s, "machine not found, terminating console session\n")
 				cs.log.Infow("machine not found, terminating ssh session", "machineID", machineID)
-				cs.createdAts.Delete(machineID)
 				cs.exitSession(s)
-				done <- true
-				continue
+				return
 			}
 			if m.Machine.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
-				cs.createdAts.Delete(machineID)
 				cs.exitSession(s)
-				done <- true
-				continue
+				return
 			}
-			createdAt, ok := cs.createdAts.Load(machineID)
-			if !ok {
-				_, _ = io.WriteString(s, "machine allocation not known, terminating console session\n")
-				cs.log.Infow("machine allocation not known, terminating ssh session", "machineID", machineID)
-				cs.exitSession(s)
-				done <- true
-				continue
-			}
-
 			if createdAt != m.Machine.Allocation.Created.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "known alloc ts", createdAt, "new alloc ts", m.Machine.Allocation.Created.String())
+				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Machine.Allocation.Created.String())
 				cs.exitSession(s)
-				done <- true
-				continue
+				return
 			}
 		}
 	}
@@ -435,11 +426,8 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	}
 
 	cs.ips.Store(machineID, privateIP)
+	cs.createdAts.Store(machineID, resp.Allocation.Created.String())
 
-	_, ok := cs.createdAts.Load(machineID)
-	if !ok {
-		cs.createdAts.Store(machineID, resp.Allocation.Created.String())
-	}
 	var pubKeys []ssh.PublicKey
 	for _, key := range resp.Allocation.SSHPubKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
