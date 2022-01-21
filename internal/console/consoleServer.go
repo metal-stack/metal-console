@@ -222,7 +222,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 
 			if createdAt != m.Machine.Allocation.Created.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID)
+				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "known alloc ts", createdAt, "new alloc ts", m.Machine.Allocation.Created.String())
 				cs.exitSession(s)
 				done <- true
 				continue
