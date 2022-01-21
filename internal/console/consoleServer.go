@@ -400,6 +400,8 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		return nil, fmt.Errorf("machine has no allocation: %s", machineID)
 	}
 
+	cs.createdAts.Store(machineID, resp.Allocation.Created.String())
+
 	if cs.spec.DevMode() {
 		bb, err := os.ReadFile(cs.spec.PublicKey)
 		if err != nil {
@@ -410,8 +412,6 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 			string(bb),
 		}
 	}
-
-	cs.createdAts.Store(machineID, resp.Allocation.Created.String())
 
 	var pubKeys []ssh.PublicKey
 	for _, key := range resp.Allocation.SSHPubKeys {
