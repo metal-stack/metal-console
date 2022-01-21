@@ -371,7 +371,7 @@ func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) b
 	cs.log.Infow("authHandler", "publicKey", publicKey)
 	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
 	if err != nil {
-		cs.log.Errorw("no authorized keys found", "machineID", machineID, "error", err)
+		cs.log.Errorw("abort establishment of console session", "machineID", machineID, "error", err)
 		return false
 	}
 	for _, key := range knownAuthorizedKeys {
