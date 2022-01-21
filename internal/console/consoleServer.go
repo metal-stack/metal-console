@@ -193,9 +193,11 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			m, err := cs.client.MachineGet(machineID)
 			if err != nil {
 				cs.log.Warnw("unable to load machine", "machineID", machineID, "error", err)
+				continue
 			}
 			if m.Machine == nil {
 				cs.log.Warnw("unable to load machine is nil", "machineID", machineID)
+				continue
 			}
 			if m.Machine.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
