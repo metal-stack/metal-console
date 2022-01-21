@@ -24,7 +24,6 @@ type consoleServer struct {
 	log        *zap.SugaredLogger
 	client     *metalgo.Driver
 	spec       *Specification
-	ips        *sync.Map
 	createdAts *sync.Map
 }
 
@@ -37,7 +36,6 @@ func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, err
 		log:        log,
 		client:     client,
 		spec:       spec,
-		ips:        new(sync.Map),
 		createdAts: new(sync.Map),
 	}, nil
 }
@@ -73,7 +71,6 @@ const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
-	defer cs.ips.Delete(machineID)
 
 	m, err := cs.getMachine(machineID)
 	if err != nil {
@@ -396,7 +393,11 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	}
 	if resp == nil {
 		cs.log.Errorw("requested machine is nil", "machineID", machineID)
-		return nil, err
+		return nil, fmt.Errorf("no machine found with id: %s", machineID)
+	}
+	if resp.Allocation == nil {
+		cs.log.Errorw("requested machine has no allocation", "machineID", machineID)
+		return nil, fmt.Errorf("machine has no allocation: %s", machineID)
 	}
 
 	if cs.spec.DevMode() {
@@ -410,22 +411,6 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 		}
 	}
 
-	privateIP := ""
-	if resp.Allocation != nil {
-		for _, nw := range resp.Allocation.Networks {
-			if *nw.Private {
-				if len(nw.Ips) > 0 {
-					privateIP = nw.Ips[0]
-					break
-				}
-			}
-		}
-	}
-	if privateIP == "" {
-		return nil, fmt.Errorf("failed to detect private IP of machine:%s", machineID)
-	}
-
-	cs.ips.Store(machineID, privateIP)
 	cs.createdAts.Store(machineID, resp.Allocation.Created.String())
 
 	var pubKeys []ssh.PublicKey
