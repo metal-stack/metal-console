@@ -87,11 +87,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		environ := s.Environ()
 		token := ""
 		for _, env := range environ {
-			if strings.HasPrefix(env, oidcEnv+"=") {
-				parts := strings.Split(env, "=")
-				if len(parts) == 2 {
-					token = parts[1]
-				}
+			_, t, found := strings.Cut(env, oidcEnv+"=")
+			if found {
+				token = t
 			}
 		}
 		if token == "" {
