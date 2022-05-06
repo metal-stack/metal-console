@@ -83,7 +83,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	// check if the ssh session contains the oidc token and the user is member of admin group
 	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-	if m.Allocation != nil && m.Allocation.Role != nil {
+	if m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
 		environ := s.Environ()
 		token := ""
 		for _, env := range environ {
@@ -112,18 +112,16 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			return
 		}
 
-		if *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
-			isAdmin := false
-			for _, g := range user.Groups {
-				if g == cs.spec.AdminGroupName {
-					isAdmin = true
-				}
+		isAdmin := false
+		for _, g := range user.Groups {
+			if g == cs.spec.AdminGroupName {
+				isAdmin = true
 			}
-			if !isAdmin {
-				_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console\n", cs.spec.AdminGroupName))
-				cs.exitSession(s)
-				return
-			}
+		}
+		if !isAdmin {
+			_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console\n", cs.spec.AdminGroupName))
+			cs.exitSession(s)
+			return
 		}
 	}
 
