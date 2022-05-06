@@ -84,12 +84,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
 	if m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
-		environ := s.Environ()
 		token := ""
-		for _, env := range environ {
+		for _, env := range s.Environ() {
 			_, t, found := strings.Cut(env, oidcEnv+"=")
 			if found {
 				token = t
+				break
 			}
 		}
 		if token == "" {
