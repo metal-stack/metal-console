@@ -65,9 +65,12 @@ func (p *bmcProxy) sessionHandler(s ssh.Session) {
 		p.log.Warnw("failed to write to console", "machineID", machineID)
 	}
 
-	addressParts := strings.Split(*metalIPMI.Address, ":")
-	host := addressParts[0]
-	port, err := strconv.Atoi(addressParts[1])
+	host, portStr, found := strings.Cut(*metalIPMI.Address, ":")
+	if !found {
+		p.log.Errorw("invalid ipmi address", "address", *metalIPMI.Address)
+		return
+	}
+	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		p.log.Errorw("invalid port", "port", port, "address", *metalIPMI.Address)
 		return
@@ -89,9 +92,9 @@ func (p *bmcProxy) receiveIPMIData(s ssh.Session) *models.V1MachineIPMI {
 	var ipmiData string
 	for i := 0; i < 5; i++ {
 		for _, env := range s.Environ() {
-			parts := strings.Split(env, "=")
-			if len(parts) == 2 && parts[0] == "LC_IPMI_DATA" {
-				ipmiData = parts[1]
+			_, data, found := strings.Cut(env, "LC_IPMI_DATA=")
+			if found {
+				ipmiData = data
 				break
 			}
 		}
