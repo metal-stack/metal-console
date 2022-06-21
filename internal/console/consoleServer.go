@@ -13,6 +13,8 @@ import (
 	"time"
 
 	metalgo "github.com/metal-stack/metal-go"
+	"github.com/metal-stack/metal-go/api/client/machine"
+	"github.com/metal-stack/metal-go/api/client/user"
 	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/gliderlabs/ssh"
@@ -22,7 +24,7 @@ import (
 
 type consoleServer struct {
 	log        *zap.SugaredLogger
-	client     *metalgo.Driver
+	client     metalgo.Client
 	spec       *Specification
 	createdAts *sync.Map
 }
@@ -40,12 +42,12 @@ func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, err
 	}, nil
 }
 
-func (cs *consoleServer) userClient(token string) (*metalgo.Driver, error) {
-	driver, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
+func (cs *consoleServer) userClient(token string) (metalgo.Client, error) {
+	client, _, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
 	if err != nil {
 		return nil, err
 	}
-	return driver, nil
+	return client, nil
 }
 
 // Run starts ssh server and listen for console connections.
@@ -104,7 +106,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			cs.exitSession(s)
 			return
 		}
-		user, err := uc.Me()
+		user, err := uc.User().GetMe(user.NewGetMeParams(), nil)
 		if err != nil {
 			_, _ = io.WriteString(s, "given oidc token is invalid\n")
 			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
@@ -113,7 +115,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 
 		isAdmin := false
-		for _, g := range user.Groups {
+		for _, g := range user.Payload.Groups {
 			if g == cs.spec.AdminGroupName {
 				isAdmin = true
 			}
@@ -191,26 +193,26 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Infow("checking if machine is still owned by the same user", "machineID", machineID)
 
-			m, err := cs.client.MachineGet(machineID)
+			m, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
 			if err != nil {
 				cs.log.Errorw("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
-			if m.Machine == nil {
+			if m.Payload == nil {
 				_, _ = io.WriteString(s, "machine not found, terminating console session\n")
 				cs.log.Infow("machine not found, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				return
 			}
-			if m.Machine.Allocation == nil {
+			if m.Payload.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				return
 			}
-			if createdAt != m.Machine.Allocation.Created.String() {
+			if createdAt != m.Payload.Allocation.Created.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Machine.Allocation.Created.String())
+				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Payload.Allocation.Created.String())
 				cs.exitSession(s)
 				return
 			}
