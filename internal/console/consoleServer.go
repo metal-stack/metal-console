@@ -198,12 +198,6 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 				cs.log.Errorw("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
-			if m.Payload == nil {
-				_, _ = io.WriteString(s, "machine not found, terminating console session\n")
-				cs.log.Infow("machine not found, terminating ssh session", "machineID", machineID)
-				cs.exitSession(s)
-				return
-			}
 			if m.Payload.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
