@@ -27,9 +27,7 @@ jobs:
     - name: Docker Image
       run: |
         docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console .
-        docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy .
         docker push ghcr.io/metal-stack/metal-console
-        docker push ghcr.io/metal-stack/bmc-proxy
     
     - uses: release-drafter/release-drafter@v5
       env:

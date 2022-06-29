@@ -28,6 +28,4 @@ jobs:
       run: |
         export GITHUB_TAG_NAME=${GITHUB_REF##*/}
         docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console:${GITHUB_TAG_NAME} .
-        docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy:${GITHUB_TAG_NAME} .
         docker push ghcr.io/metal-stack/metal-console:${GITHUB_TAG_NAME}
-        docker push ghcr.io/metal-stack/bmc-proxy:${GITHUB_TAG_NAME}

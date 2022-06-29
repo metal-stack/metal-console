@@ -33,12 +33,10 @@ jobs:
       run: |
         export GITHUB_TAG_NAME=${GITHUB_HEAD_REF##*/}
         docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME} .
-        docker build -f Dockerfile.bmcproxy -t ghcr.io/metal-stack/bmc-proxy:pr-${GITHUB_TAG_NAME} .
 
     - name: Push Docker image
       run: |
         export GITHUB_TAG_NAME=${GITHUB_HEAD_REF##*/}
         # pull request images are prefixed with 'pr' to prevent them from overriding released images
         docker push ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME}
-        docker push ghcr.io/metal-stack/bmc-proxy:pr-${GITHUB_TAG_NAME}
       if: steps.fork.outputs.is_fork_pr == 'false'
