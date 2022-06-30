@@ -4,29 +4,15 @@ GITVERSION := $(shell git describe --long --all)
 BUILDDATE := $(shell date -Iseconds)
 VERSION := $(or ${VERSION},devel)
 
-.PHONY: default
-default: release;
+all: test console
 
-COMMONDIR := $(or ${COMMONDIR},../builder)
+.PHONY: test
+test:
+	go test -v ./...
 
-include $(COMMONDIR)/Makefile.inc
-
-release:: gofmt test bmcproxy console;
-
-bmcproxy:
-	$(GO) build \
-		-trimpath \
-		-tags netgo \
-		-ldflags "-X 'github.com/metal-stack/v.Version=$(VERSION)' \
-				  -X 'github.com/metal-stack/v.Revision=$(GITVERSION)' \
-				  -X 'github.com/metal-stack/v.GitSHA1=$(SHA)' \
-				  -X 'github.com/metal-stack/v.BuildDate=$(BUILDDATE)'" \
-		-o bin/bmc-proxy \
-		./cmd/bmcproxy
-	strip bin/bmc-proxy
-
+.PHONY: console
 console:
-	$(GO) build \
+	go build \
 		-trimpath \
 		-tags netgo \
 		-ldflags "-X 'github.com/metal-stack/v.Version=$(VERSION)' \
@@ -34,5 +20,5 @@ console:
 				  -X 'github.com/metal-stack/v.GitSHA1=$(SHA)' \
 				  -X 'github.com/metal-stack/v.BuildDate=$(BUILDDATE)'" \
 		-o bin/metal-console \
-		./cmd/console
+		main.go
 	strip bin/metal-console

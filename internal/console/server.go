@@ -29,11 +29,7 @@ type consoleServer struct {
 	createdAts *sync.Map
 }
 
-func NewServer(log *zap.SugaredLogger, spec *Specification) (*consoleServer, error) {
-	client, err := newClient(spec.MetalAPIURL, spec.HMACKey)
-	if err != nil {
-		return nil, err
-	}
+func NewServer(log *zap.SugaredLogger, spec *Specification, client metalgo.Client) (*consoleServer, error) {
 	return &consoleServer{
 		log:        log,
 		client:     client,
@@ -74,13 +70,14 @@ const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
-	m, err := cs.getMachine(machineID)
-	if err != nil {
+	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
+	if err != nil || resp == nil || resp.Payload == nil {
 		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
 		cs.exitSession(s)
 		return
 	}
 
+	m := resp.Payload
 	// If the machine is a firewall
 	// check if the ssh session contains the oidc token and the user is member of admin group
 	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
@@ -150,8 +147,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		sshClient.Close()
 		sshConn.Close()
 	}()
-
-	cs.sendIPMIData(sshSession, machineID)
 
 	cs.requestPTY(sshSession)
 
@@ -341,26 +336,6 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 	return tcpConn, nil
 }
 
-func (cs *consoleServer) sendIPMIData(sshSession *gossh.Session, machineID string) {
-	m, err := cs.getMachineIPMI(machineID)
-	if err != nil {
-		cs.log.Errorw("failed to fetch IPMI data from Metal API", "machineID", machineID, "error", err)
-		runtime.Goexit()
-	}
-
-	ipmiData, err := m.Ipmi.MarshalBinary()
-	if err != nil {
-		cs.log.Errorw("failed to marshal MetalIPMI", "error", err)
-		runtime.Goexit()
-	}
-
-	err = sshSession.Setenv("LC_IPMI_DATA", string(ipmiData))
-	if err != nil {
-		cs.log.Errorw("failed to send IPMI data to BMC proxy", "error", err)
-		runtime.Goexit()
-	}
-}
-
 func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
 	cs.log.Infow("authHandler", "publicKey", publicKey)
@@ -381,21 +356,18 @@ func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) b
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
-	resp, err := cs.getMachine(machineID)
+	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
 	if err != nil {
 		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
 		return nil, err
 	}
-	if resp == nil {
+	if resp.Payload == nil || resp.Payload.Allocation == nil {
 		cs.log.Errorw("requested machine is nil", "machineID", machineID)
 		return nil, fmt.Errorf("no machine found with id: %s", machineID)
 	}
-	if resp.Allocation == nil {
-		cs.log.Errorw("requested machine has no allocation", "machineID", machineID)
-		return nil, fmt.Errorf("machine has no allocation: %s", machineID)
-	}
+	alloc := resp.Payload.Allocation
 
-	cs.createdAts.Store(machineID, resp.Allocation.Created.String())
+	cs.createdAts.Store(machineID, alloc.Created.String())
 
 	if cs.spec.DevMode() {
 		bb, err := os.ReadFile(cs.spec.PublicKey)
@@ -403,13 +375,13 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 			cs.log.Errorw("failed to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
-		resp.Allocation.SSHPubKeys = []string{
+		alloc.SSHPubKeys = []string{
 			string(bb),
 		}
 	}
 
 	var pubKeys []ssh.PublicKey
-	for _, key := range resp.Allocation.SSHPubKeys {
+	for _, key := range alloc.SSHPubKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {
 			return nil, fmt.Errorf("error parsing public key:%w", err)
