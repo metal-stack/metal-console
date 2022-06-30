@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/metal-stack/metal-console/internal/console"
+	metalgo "github.com/metal-stack/metal-go"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -31,9 +32,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	sugar.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, spec.HMACKey, "")
+	if err != nil {
+		sugar.Errorw("failed to read env config", "error", err)
+		os.Exit(1)
+	}
 
-	s, err := console.NewServer(sugar, spec)
+	sugar.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	s, err := console.NewServer(sugar, spec, client)
 	if err != nil {
 		sugar.Errorw("failed to create metal-go driver", "error", err)
 		os.Exit(1)
