@@ -24,25 +24,23 @@ func main() {
 		fmt.Printf("can't initialize zap logger: %s", err)
 		os.Exit(1)
 	}
-	sugar := l.Sugar()
+	log := l.Sugar()
 
 	err = envconfig.Process("METAL_CONSOLE", spec)
 	if err != nil {
-		sugar.Errorw("failed to read env config", "error", err)
-		os.Exit(1)
+		log.Fatalw("failed to read env config", "error", err)
 	}
 
-	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey, metalgo.AuthType("Metal-Edit"))
+	// FIXME metal-view is enough
+	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
 	if err != nil {
-		sugar.Errorw("failed to read env config", "error", err)
-		os.Exit(1)
+		log.Fatalw("failed to create metal client", "error", err)
 	}
 
-	sugar.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
-	s, err := console.NewServer(sugar, spec, client)
+	log.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	s, err := console.NewServer(log, spec, client)
 	if err != nil {
-		sugar.Errorw("failed to create metal-go driver", "error", err)
-		os.Exit(1)
+		log.Fatalw("failed to create console server", "error", err)
 	}
 	s.Run()
 }
