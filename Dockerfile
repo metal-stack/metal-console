@@ -1,4 +1,7 @@
-FROM metalstack/builder:latest as builder
+FROM golang:1.18 as builder
+WORKDIR /work
+COPY . .
+RUN make
 
 FROM alpine:3.16
 

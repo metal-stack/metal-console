@@ -32,7 +32,7 @@ jobs:
     - name: Build Docker image
       run: |
         export GITHUB_TAG_NAME=${GITHUB_HEAD_REF##*/}
-        docker build -f Dockerfile.console -t ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME} .
+        docker build -f Dockerfile -t ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME} .
 
     - name: Push Docker image
       run: |
