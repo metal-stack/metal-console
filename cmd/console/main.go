@@ -32,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, spec.HMACKey, "")
+	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey, metalgo.AuthType("Metal-Edit"))
 	if err != nil {
 		sugar.Errorw("failed to read env config", "error", err)
 		os.Exit(1)
