@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// FIXME metal-view is enough
-	client, _, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
+	client, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
 	if err != nil {
 		log.Fatalw("failed to create metal client", "error", err)
 	}
