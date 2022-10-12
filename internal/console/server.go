@@ -39,7 +39,7 @@ func NewServer(log *zap.SugaredLogger, spec *Specification, client metalgo.Clien
 }
 
 func (cs *consoleServer) userClient(token string) (metalgo.Client, error) {
-	client, _, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
+	client, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
 	if err != nil {
 		return nil, err
 	}
