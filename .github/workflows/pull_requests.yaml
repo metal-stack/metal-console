@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Figure out if running fork PR
       id: fork
@@ -25,7 +25,7 @@ jobs:
       if: steps.fork.outputs.is_fork_pr == 'false'
 
     - name: Lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3
       with:
         args: -p bugs -p unused
 
