@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -18,18 +19,17 @@ import (
 	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/gliderlabs/ssh"
-	"go.uber.org/zap"
 	gossh "golang.org/x/crypto/ssh"
 )
 
 type consoleServer struct {
-	log        *zap.SugaredLogger
+	log        *slog.Logger
 	client     metalgo.Client
 	spec       *Specification
 	createdAts *sync.Map
 }
 
-func NewServer(log *zap.SugaredLogger, spec *Specification, client metalgo.Client) (*consoleServer, error) {
+func NewServer(log *slog.Logger, spec *Specification, client metalgo.Client) (*consoleServer, error) {
 	return &consoleServer{
 		log:        log,
 		client:     client,
@@ -56,13 +56,17 @@ func (cs *consoleServer) Run() {
 
 	hostKey, err := loadHostKey()
 	if err != nil {
-		cs.log.Errorw("failed to load host key", "error", err)
+		cs.log.Error("failed to load host key", "error", err)
 		runtime.Goexit()
 	}
 	s.AddHostKey(hostKey)
 
-	cs.log.Infow("starting ssh server", "port", cs.spec.Port)
-	cs.log.Fatal(s.ListenAndServe())
+	cs.log.Info("starting ssh server", "port", cs.spec.Port)
+	err = s.ListenAndServe()
+	if err != nil {
+		cs.log.Error("unable to start listener", "error", err)
+		panic(err)
+	}
 }
 
 const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
@@ -72,7 +76,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
 	if err != nil || resp == nil || resp.Payload == nil {
-		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
+		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		cs.exitSession(s)
 		return
 	}
@@ -99,14 +103,14 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		uc, err := cs.userClient(token)
 		if err != nil {
 			_, _ = io.WriteString(s, "technical error\n")
-			cs.log.Errorw("failed to create user client", "error", err)
+			cs.log.Error("failed to create user client", "error", err)
 			cs.exitSession(s)
 			return
 		}
 		user, err := uc.User().GetMe(user.NewGetMeParams(), nil)
 		if err != nil {
 			_, _ = io.WriteString(s, "given oidc token is invalid\n")
-			cs.log.Errorw("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
+			cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
 			cs.exitSession(s)
 			return
 		}
@@ -132,14 +136,14 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	tcpConn, err := cs.connectToManagementNetwork(mgmtServiceAddress)
 	if err != nil {
-		cs.log.Errorw("failed to connect to management network", "error", err)
+		cs.log.Error("failed to connect to management network", "error", err)
 		return
 	}
 	defer tcpConn.Close()
 
 	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
 	if err != nil {
-		cs.log.Errorw("failed to establish SSH connection via already established TCP connection", "error", err)
+		cs.log.Error("failed to establish SSH connection via already established TCP connection", "error", err)
 		return
 	}
 	defer func() {
@@ -159,7 +163,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	err = sshSession.Start("bash")
 	if err != nil {
-		cs.log.Errorw("failed to start bash via SSH session", "error", err)
+		cs.log.Error("failed to start bash via SSH session", "error", err)
 		return
 	}
 
@@ -172,7 +176,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 	createdAt, ok := cs.createdAts.Load(machineID)
 	if !ok {
 		_, _ = io.WriteString(s, "machine allocation not known, terminating console session\n")
-		cs.log.Infow("machine allocation not known, terminating ssh session", "machineID", machineID)
+		cs.log.Info("machine allocation not known, terminating ssh session", "machineID", machineID)
 		cs.exitSession(s)
 		return
 	}
@@ -183,25 +187,25 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 	for {
 		select {
 		case <-s.Context().Done():
-			cs.log.Infow("connection closed", "machineID", machineID)
+			cs.log.Info("connection closed", "machineID", machineID)
 			return
 		case <-ticker.C:
-			cs.log.Infow("checking if machine is still owned by the same user", "machineID", machineID)
+			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 
 			m, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
 			if err != nil {
-				cs.log.Errorw("unable to load machine", "machineID", machineID, "error", err)
+				cs.log.Error("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
 			if m.Payload.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
-				cs.log.Infow("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
+				cs.log.Info("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				return
 			}
 			if createdAt != m.Payload.Allocation.Created.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Infow("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Payload.Allocation.Created.String())
+				cs.log.Info("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Payload.Allocation.Created.String())
 				cs.exitSession(s)
 				return
 			}
@@ -212,19 +216,19 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 func (cs *consoleServer) exitSession(session ssh.Session) {
 	err := session.Exit(1)
 	if err != nil {
-		cs.log.Errorw("failed to exit SSH session", "error", err)
+		cs.log.Error("failed to exit SSH session", "error", err)
 	}
 }
 
 func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSession *gossh.Session, done chan<- bool) {
 	stdin, err := machineSSHSession.StdinPipe()
 	if err != nil {
-		cs.log.Errorw("failed to fetch stdin for SSH session", "error", err)
+		cs.log.Error("failed to fetch stdin for SSH session", "error", err)
 	} else {
 		go func() {
 			_, err = io.Copy(stdin, callerSSHSession)
 			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Errorw("failed to copy caller stdin to machine", "error", err)
+				cs.log.Error("failed to copy caller stdin to machine", "error", err)
 			}
 
 			done <- true
@@ -233,12 +237,12 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 
 	stdout, err := machineSSHSession.StdoutPipe()
 	if err != nil {
-		cs.log.Errorw("failed to fetch stdout for SSH session", "error", err)
+		cs.log.Error("failed to fetch stdout for SSH session", "error", err)
 	} else {
 		go func() {
 			_, err = io.Copy(callerSSHSession, stdout)
 			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Errorw("failed to copy machine stdout to caller", "error", err)
+				cs.log.Error("failed to copy machine stdout to caller", "error", err)
 			}
 
 			done <- true
@@ -247,12 +251,12 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 
 	stderr, err := machineSSHSession.StderrPipe()
 	if err != nil {
-		cs.log.Errorw("failed to fetch stderr for SSH session", "error", err)
+		cs.log.Error("failed to fetch stderr for SSH session", "error", err)
 	} else {
 		go func() {
 			_, err = io.Copy(callerSSHSession, stderr)
 			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Errorw("failed to copy machine stderr to caller", "error", err)
+				cs.log.Error("failed to copy machine stderr to caller", "error", err)
 			}
 
 			done <- true
@@ -268,14 +272,14 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 	}
 
 	if err := sshSession.RequestPty("xterm", 80, 40, modes); err != nil {
-		cs.log.Errorw("failed to request PTY", "error", err)
+		cs.log.Error("failed to request PTY", "error", err)
 	}
 }
 
 func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session, error) {
 	pubHostKey, err := loadPublicHostKey()
 	if err != nil {
-		cs.log.Errorw("failed to load public host key", "error", err)
+		cs.log.Error("failed to load public host key", "error", err)
 		return nil, nil, nil, err
 	}
 
@@ -286,7 +290,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
 	if err != nil {
-		cs.log.Errorw("failed to open client connection", "mgmt-service address", mgmtServiceAddress, "error", err)
+		cs.log.Error("failed to open client connection", "mgmt-service address", mgmtServiceAddress, "error", err)
 		return nil, nil, nil, err
 	}
 
@@ -294,7 +298,7 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 
 	sshSession, err := sshClient.NewSession()
 	if err != nil {
-		cs.log.Errorw("failed to create new SSH session", "error", err)
+		cs.log.Error("failed to create new SSH session", "error", err)
 		return nil, nil, nil, err
 	}
 
@@ -304,19 +308,19 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
 	clientCert, err := tls.LoadX509KeyPair("/certs/client.pem", "/certs/client-key.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
+		cs.log.Error("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
 		return nil, err
 	}
 
 	caCert, err := os.ReadFile("/certs/ca.pem")
 	if err != nil {
-		cs.log.Errorw("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
+		cs.log.Error("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
 		return nil, err
 	}
 	caCertPool := x509.NewCertPool()
 	ok := caCertPool.AppendCertsFromPEM(caCert)
 	if !ok {
-		cs.log.Errorw("failed to append CA certificate")
+		cs.log.Error("failed to append CA certificate")
 		return nil, errors.New("bad ca certificate")
 	}
 
@@ -328,41 +332,41 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 
 	tcpConn, err := tls.Dial("tcp", mgmtServiceAddress, tlsConfig)
 	if err != nil {
-		cs.log.Errorw("failed to dial via TCP", "address", mgmtServiceAddress, "error", err)
+		cs.log.Error("failed to dial via TCP", "address", mgmtServiceAddress, "error", err)
 		return nil, err
 	}
-	cs.log.Infow("connect to management network", "remote addr", tcpConn.RemoteAddr())
+	cs.log.Info("connect to management network", "remote addr", tcpConn.RemoteAddr())
 
 	return tcpConn, nil
 }
 
 func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
-	cs.log.Infow("authHandler", "publicKey", publicKey)
+	cs.log.Info("authHandler", "publicKey", publicKey)
 	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
 	if err != nil {
-		cs.log.Errorw("abort establishment of console session", "machineID", machineID, "error", err)
+		cs.log.Error("abort establishment of console session", "machineID", machineID, "error", err)
 		return false
 	}
 	for _, key := range knownAuthorizedKeys {
-		cs.log.Infow("authHandler", "machineID", machineID, "authorizedKey", key)
+		cs.log.Info("authHandler", "machineID", machineID, "authorizedKey", key)
 		same := ssh.KeysEqual(publicKey, key)
 		if same {
 			return true
 		}
 	}
-	cs.log.Warnw("no matching authorized key found", "machineID", machineID)
+	cs.log.Warn("no matching authorized key found", "machineID", machineID)
 	return false
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
 	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
 	if err != nil {
-		cs.log.Errorw("failed to fetch requested machine", "machineID", machineID, "error", err)
+		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		return nil, err
 	}
 	if resp.Payload == nil || resp.Payload.Allocation == nil {
-		cs.log.Errorw("requested machine is nil", "machineID", machineID)
+		cs.log.Error("requested machine is nil", "machineID", machineID)
 		return nil, fmt.Errorf("no machine found with id: %s", machineID)
 	}
 	alloc := resp.Payload.Allocation
@@ -372,7 +376,7 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 	if cs.spec.DevMode() {
 		bb, err := os.ReadFile(cs.spec.PublicKey)
 		if err != nil {
-			cs.log.Errorw("failed to read public key", "file", cs.spec.PublicKey)
+			cs.log.Error("failed to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
 		alloc.SSHPubKeys = []string{
