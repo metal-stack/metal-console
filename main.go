@@ -1,13 +1,11 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/metal-stack/metal-console/internal/console"
 	metalgo "github.com/metal-stack/metal-go"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/v"
@@ -16,31 +14,27 @@ import (
 func main() {
 	spec := &console.Specification{}
 
-	cfg := zap.NewProductionConfig()
-	cfg.EncoderConfig.TimeKey = "timestamp"
-	cfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
-	l, err := cfg.Build()
-	if err != nil {
-		fmt.Printf("can't initialize zap logger: %s", err)
-		os.Exit(1)
-	}
-	log := l.Sugar()
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+	log := slog.New(jsonHandler)
 
-	err = envconfig.Process("METAL_CONSOLE", spec)
+	err := envconfig.Process("METAL_CONSOLE", spec)
 	if err != nil {
-		log.Fatalw("failed to read env config", "error", err)
+		log.Error("failed to read env config", "error", err)
+		panic(err)
 	}
 
 	// FIXME metal-view is enough
 	client, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
 	if err != nil {
-		log.Fatalw("failed to create metal client", "error", err)
+		log.Error("failed to create metal client", "error", err)
+		panic(err)
 	}
 
-	log.Infow("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	log.Info("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
 	s, err := console.NewServer(log, spec, client)
 	if err != nil {
-		log.Fatalw("failed to create console server", "error", err)
+		log.Error("failed to create console server", "error", err)
+		panic(err)
 	}
 	s.Run()
 }
