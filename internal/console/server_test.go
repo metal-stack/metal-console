@@ -1,9 +1,10 @@
 package console
 
 import (
+	"testing"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestLoadPublicHostKey(t *testing.T) {
@@ -14,5 +15,5 @@ func TestLoadPublicHostKey(t *testing.T) {
 	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubHostKey))
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
