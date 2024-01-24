@@ -30,7 +30,7 @@ func main() {
 		panic(err)
 	}
 
-	log.Info("metal-console", "version", v.V, "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
 	s, err := console.NewServer(log, spec, client)
 	if err != nil {
 		log.Error("failed to create console server", "error", err)
