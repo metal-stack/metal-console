@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -29,13 +28,13 @@ type consoleServer struct {
 	createdAts *sync.Map
 }
 
-func NewServer(log *slog.Logger, spec *Specification, client metalgo.Client) (*consoleServer, error) {
+func NewServer(log *slog.Logger, spec *Specification, client metalgo.Client) *consoleServer {
 	return &consoleServer{
 		log:        log,
 		client:     client,
 		spec:       spec,
 		createdAts: new(sync.Map),
-	}, nil
+	}
 }
 
 func (cs *consoleServer) userClient(token string) (metalgo.Client, error) {
@@ -47,7 +46,7 @@ func (cs *consoleServer) userClient(token string) (metalgo.Client, error) {
 }
 
 // Run starts ssh server and listen for console connections.
-func (cs *consoleServer) Run() {
+func (cs *consoleServer) Run() error {
 	s := &ssh.Server{
 		Addr:             fmt.Sprintf(":%d", cs.spec.Port),
 		Handler:          cs.sessionHandler,
@@ -56,17 +55,16 @@ func (cs *consoleServer) Run() {
 
 	hostKey, err := loadHostKey()
 	if err != nil {
-		cs.log.Error("failed to load host key", "error", err)
-		runtime.Goexit()
+		return fmt.Errorf("failed to load host key %w", err)
 	}
 	s.AddHostKey(hostKey)
 
 	cs.log.Info("starting ssh server", "port", cs.spec.Port)
 	err = s.ListenAndServe()
 	if err != nil {
-		cs.log.Error("unable to start listener", "error", err)
-		panic(err)
+		return fmt.Errorf("unable to start listener %w", err)
 	}
+	return nil
 }
 
 const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
