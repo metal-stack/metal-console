@@ -3,7 +3,7 @@ WORKDIR /work
 COPY . .
 RUN make
 
-FROM alpine:3.19
+FROM alpine:3.20
 
 COPY --from=builder /work/bin/metal-console /
 
