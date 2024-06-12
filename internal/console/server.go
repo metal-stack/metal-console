@@ -73,6 +73,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 
 	m := resp.Payload
+	var isAdmin bool
 
 	// If the machine is a firewall or not allocated
 	// check if the ssh session contains the oidc token and the user is member of admin group
@@ -88,7 +89,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			}
 		}
 
-		_, err := cs.checkIsAdmin(machineID, token)
+		isAdmin, err = cs.checkIsAdmin(machineID, token)
 		if err != nil {
 			_, _ = io.WriteString(s, err.Error()+"\n")
 			cs.exitSession(s)
@@ -127,7 +128,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	cs.redirectIO(s, sshSession, done)
 
 	// check periodically if the session is still allowed.
-	go cs.terminateIfPublicKeysChanged(s)
+	if !isAdmin {
+		go cs.terminateIfPublicKeysChanged(s)
+	}
 
 	err = sshSession.Start("bash")
 	if err != nil {
