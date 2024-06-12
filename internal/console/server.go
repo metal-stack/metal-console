@@ -90,7 +90,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 		_, err := cs.checkIsAdmin(machineID, token)
 		if err != nil {
-			_, _ = io.WriteString(s, err.Error())
+			_, _ = io.WriteString(s, err.Error()+"\n")
 			cs.exitSession(s)
 			return
 		}
@@ -396,7 +396,7 @@ func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool 
 
 func (cs *consoleServer) checkIsAdmin(machineID string, token string) (bool, error) {
 	if token == "" {
-		return false, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access\n", oidcEnv)
+		return false, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
 
 	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
@@ -406,7 +406,7 @@ func (cs *consoleServer) checkIsAdmin(machineID string, token string) (bool, err
 
 	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
 	if err != nil {
-		cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
+		cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err, "token", token)
 		return false, fmt.Errorf("given oidc token is invalid")
 	}
 
