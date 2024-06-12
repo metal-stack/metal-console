@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -37,20 +36,13 @@ func NewServer(log *slog.Logger, spec *Specification, client metalgo.Client) *co
 	}
 }
 
-func (cs *consoleServer) userClient(token string) (metalgo.Client, error) {
-	client, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
 // Run starts ssh server and listen for console connections.
 func (cs *consoleServer) Run() error {
 	s := &ssh.Server{
 		Addr:             fmt.Sprintf(":%d", cs.spec.Port),
 		Handler:          cs.sessionHandler,
-		PublicKeyHandler: cs.authHandler,
+		PublicKeyHandler: cs.publicKeyHandler,
+		PasswordHandler:  cs.passwordHandler,
 	}
 
 	hostKey, err := loadHostKey()
@@ -80,51 +72,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 
 	m := resp.Payload
-	// If the machine is a firewall
-	// check if the ssh session contains the oidc token and the user is member of admin group
-	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
-	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-	if m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall {
-		token := ""
-		for _, env := range s.Environ() {
-			_, t, found := strings.Cut(env, oidcEnv+"=")
-			if found {
-				token = t
-				break
-			}
-		}
-		if token == "" {
-			_, _ = io.WriteString(s, fmt.Sprintf("unable to find OIDC token stored in %s env variable which is required for firewall console access\n", oidcEnv))
-			cs.exitSession(s)
-			return
-		}
-		uc, err := cs.userClient(token)
-		if err != nil {
-			_, _ = io.WriteString(s, "technical error\n")
-			cs.log.Error("failed to create user client", "error", err)
-			cs.exitSession(s)
-			return
-		}
-		user, err := uc.User().GetMe(user.NewGetMeParams(), nil)
-		if err != nil {
-			_, _ = io.WriteString(s, "given oidc token is invalid\n")
-			cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
-			cs.exitSession(s)
-			return
-		}
-
-		isAdmin := false
-		for _, g := range user.Payload.Groups {
-			if g == cs.spec.AdminGroupName {
-				isAdmin = true
-			}
-		}
-		if !isAdmin {
-			_, _ = io.WriteString(s, fmt.Sprintf("you are not member of required admin group:%s to access this machine console\n", cs.spec.AdminGroupName))
-			cs.exitSession(s)
-			return
-		}
-	}
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
 
@@ -338,10 +285,24 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 	return tcpConn, nil
 }
 
-func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
+func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
+
+	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
+	if err != nil {
+		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
+		return false
+	}
+
+	m := resp.Payload
+
+	if m == nil || m.Allocation == nil || m.Allocation.Role == nil || *m.Allocation.Role != models.V1MachineAllocationRoleMachine {
+		cs.log.Error("only access to machines is allowed", "machineID", machineID)
+		return false
+	}
+
 	cs.log.Info("authHandler", "publicKey", publicKey)
-	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
+	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(resp.Payload)
 	if err != nil {
 		cs.log.Error("abort establishment of console session", "machineID", machineID, "error", err)
 		return false
@@ -353,21 +314,15 @@ func (cs *consoleServer) authHandler(ctx ssh.Context, publicKey ssh.PublicKey) b
 			return true
 		}
 	}
+
 	cs.log.Warn("no matching authorized key found", "machineID", machineID)
+
 	return false
 }
 
-func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
-	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
-	if err != nil {
-		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
-		return nil, err
-	}
-	if resp.Payload == nil || resp.Payload.Allocation == nil {
-		cs.log.Error("requested machine is nil", "machineID", machineID)
-		return nil, fmt.Errorf("no machine found with id: %s", machineID)
-	}
-	alloc := resp.Payload.Allocation
+func (cs *consoleServer) getAuthorizedKeysForMachine(m *models.V1MachineResponse) ([]ssh.PublicKey, error) {
+	machineID := *m.ID
+	alloc := m.Allocation
 
 	cs.createdAts.Store(machineID, alloc.Created.String())
 
@@ -409,4 +364,43 @@ func loadPublicHostKey() (gossh.PublicKey, error) {
 	}
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
 	return pubKey, err
+}
+
+func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
+	err := cs.checkIsAdmin(ctx.User(), password)
+	if err != nil {
+		cs.log.Error("user is not an admin", "error", err)
+		return false
+	}
+
+	return true
+}
+
+func (cs *consoleServer) checkIsAdmin(machineID string, token string) error {
+	if token == "" {
+		return fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access\n", oidcEnv)
+	}
+
+	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
+	if err != nil {
+		return fmt.Errorf("failed to create metal client: %w", err)
+	}
+
+	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
+	if err != nil {
+		cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err)
+		return fmt.Errorf("given oidc token is invalid")
+	}
+
+	isAdmin := false
+	for _, g := range user.Payload.Groups {
+		if g == cs.spec.AdminGroupName {
+			isAdmin = true
+		}
+	}
+	if !isAdmin {
+		return fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
+	}
+
+	return nil
 }
