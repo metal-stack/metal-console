@@ -458,6 +458,7 @@ func (cs *consoleServer) checkIsAdmin(token string) (jwt.Claims, error) {
 	for _, g := range user.Groups {
 		if g == cs.spec.AdminGroupName {
 			isAdmin = true
+			break
 		}
 	}
 	if !isAdmin {
