@@ -119,6 +119,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	cs.redirectIO(s, sshSession, done)
 
 	// check periodically if the session is still allowed.
+	// this is only required when public key authorization was used.
 	if s.PublicKey() != nil {
 		go cs.terminateIfPublicKeysChanged(s)
 	}
