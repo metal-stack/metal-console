@@ -313,16 +313,17 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
 
-	cs.log.Info("authHandler", "publicKey", publicKey)
+	cs.log.Info("authHandler", "publicKey", string(publicKey.Marshal()))
+
 	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
 	if err != nil {
 		cs.log.Error("abort establishment of console session", "machineID", machineID, "error", err)
 		return false
 	}
 	for _, key := range knownAuthorizedKeys {
-		cs.log.Info("authHandler", "machineID", machineID, "authorizedKey", key)
 		same := ssh.KeysEqual(publicKey, key)
 		if same {
+			cs.log.Info("authHandler found matching key for machine access", "machineID", machineID, "authorizedKey", string(key.Marshal()))
 			return true
 		}
 	}
