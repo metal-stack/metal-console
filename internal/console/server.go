@@ -403,7 +403,7 @@ func loadPublicHostKey() (gossh.PublicKey, error) {
 }
 
 func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
-	_, err := cs.checkIsAdmin(ctx.User())
+	_, err := cs.checkIsAdmin(password)
 	if err != nil {
 		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User(), "error", err)
 		return false
