@@ -429,9 +429,9 @@ func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*models.V1User,
 	}
 
 	claims := &jwt.MapClaims{}
-	_, _, err := new(jwt.Parser).ParseUnverified(string(token), claims)
+	_, _, err := new(jwt.Parser).ParseUnverified(token, claims)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to parse jwt: %w", err)
+		return nil, nil, fmt.Errorf("unable to parse jwt %q: %w", token, err)
 	}
 
 	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
