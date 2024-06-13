@@ -315,7 +315,7 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicKey) bool {
 	machineID := ctx.User()
 
-	cs.log.Info("authHandler", "publicKey", string(publicKey.Marshal()))
+	cs.log.Info("authHandler", "publicKey", publicKey)
 
 	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
 	if err != nil {
@@ -325,7 +325,7 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 	for _, key := range knownAuthorizedKeys {
 		same := ssh.KeysEqual(publicKey, key)
 		if same {
-			cs.log.Info("authHandler found matching key for machine access", "machineID", machineID, "authorizedKey", string(key.Marshal()))
+			cs.log.Info("authHandler found matching key for machine access", "machineID", machineID)
 			return true
 		}
 	}
