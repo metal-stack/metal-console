@@ -74,21 +74,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	m := resp.Payload
 
-	// If the machine is a firewall or not allocated
-	// check if the ssh session contains the oidc token and the user is member of admin group
-	// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
-	// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-	if s.PublicKey() == nil || (m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role == models.V1MachineAllocationRoleFirewall) {
-		token := ""
-		for _, env := range s.Environ() {
-			_, t, found := strings.Cut(env, oidcEnv+"=")
-			if found {
-				token = t
-				break
-			}
-		}
-
-		_, err = cs.checkIsAdmin(machineID, token)
+	switch {
+	case m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role != models.V1MachineAllocationRoleMachine, s.PublicKey() == nil:
+		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
+		// check if the ssh session contains the oidc token and the user is member of admin group
+		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
+		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
+		_, err = cs.checkIsAdmin(machineID, oidcTokenFromSessionEnv(s))
 		if err != nil {
 			_, _ = io.WriteString(s, err.Error()+"\n")
 			cs.exitSession(s)
@@ -139,6 +131,17 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till connection is closed
 	<-done
+}
+
+func oidcTokenFromSessionEnv(s ssh.Session) string {
+	for _, env := range s.Environ() {
+		_, t, found := strings.Cut(env, oidcEnv+"=")
+		if found {
+			return t
+		}
+	}
+
+	return ""
 }
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
