@@ -83,6 +83,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
 		_, err = cs.checkIsAdmin(machineID, oidcTokenFromSessionEnv(s))
 		if err != nil {
+			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "error", err, "from", s.RemoteAddr())
 			_, _ = io.WriteString(s, err.Error()+"\n")
 			cs.exitSession(s)
 			return
