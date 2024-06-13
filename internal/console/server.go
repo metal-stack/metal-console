@@ -76,13 +76,15 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	m := resp.Payload
 	role := pointer.SafeDeref(pointer.SafeDeref(m.Allocation).Role)
+	isAdmin := false
 
 	if role != models.V1MachineAllocationRoleMachine || s.PublicKey() == nil {
 		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
 		// check if the ssh session contains the oidc token and the user is member of admin group
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-		_, claims, err := cs.checkIsAdmin(machineID, oidcTokenFromSessionEnv(s))
+		var claims jwt.Claims
+		isAdmin, claims, err = cs.checkIsAdmin(machineID, oidcTokenFromSessionEnv(s))
 		if err != nil {
 			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr(), "error", err)
 			_, _ = io.WriteString(s, err.Error()+"\n")
@@ -125,9 +127,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	cs.redirectIO(s, sshSession, done)
 
-	// check periodically if the session is still allowed.
-	// this is only required when public key authorization was used.
-	if s.PublicKey() != nil {
+	if !isAdmin {
+		// check periodically if the session is still allowed.
+		// admins don't need to be disconnected from machines
 		go cs.terminateIfPublicKeysChanged(s)
 	}
 
