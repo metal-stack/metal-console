@@ -16,6 +16,7 @@ import (
 	"github.com/metal-stack/metal-go/api/client/machine"
 	"github.com/metal-stack/metal-go/api/client/user"
 	"github.com/metal-stack/metal-go/api/models"
+	"github.com/metal-stack/metal-lib/pkg/pointer"
 
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
@@ -73,9 +74,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 
 	m := resp.Payload
+	role := pointer.SafeDeref(pointer.SafeDeref(m.Allocation).Role)
 
-	switch {
-	case m.Allocation != nil && m.Allocation.Role != nil && *m.Allocation.Role != models.V1MachineAllocationRoleMachine, s.PublicKey() == nil:
+	if role != models.V1MachineAllocationRoleMachine || s.PublicKey() == nil {
 		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
 		// check if the ssh session contains the oidc token and the user is member of admin group
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
@@ -132,17 +133,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till connection is closed
 	<-done
-}
-
-func oidcTokenFromSessionEnv(s ssh.Session) string {
-	for _, env := range s.Environ() {
-		_, t, found := strings.Cut(env, oidcEnv+"=")
-		if found {
-			return t
-		}
-	}
-
-	return ""
 }
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
@@ -398,6 +388,17 @@ func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool 
 	}
 
 	return isAdmin
+}
+
+func oidcTokenFromSessionEnv(s ssh.Session) string {
+	for _, env := range s.Environ() {
+		_, t, found := strings.Cut(env, oidcEnv+"=")
+		if found {
+			return t
+		}
+	}
+
+	return ""
 }
 
 func (cs *consoleServer) checkIsAdmin(machineID string, token string) (bool, error) {
