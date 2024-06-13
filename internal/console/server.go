@@ -74,9 +74,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	m := resp.Payload
-	role := pointer.SafeDeref(pointer.SafeDeref(m.Allocation).Role)
-	isAdmin := false
+	var (
+		m       = resp.Payload
+		role    = pointer.SafeDeref(pointer.SafeDeref(m.Allocation).Role)
+		isAdmin = false
+		token   = oidcTokenFromSessionEnv(s)
+	)
 
 	if role != models.V1MachineAllocationRoleMachine || s.PublicKey() == nil {
 		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
@@ -84,7 +87,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
 		var claims jwt.Claims
-		isAdmin, claims, err = cs.checkIsAdmin(machineID, oidcTokenFromSessionEnv(s))
+		claims, err = cs.checkIsAdmin(token)
 		if err != nil {
 			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr(), "error", err)
 			_, _ = io.WriteString(s, err.Error()+"\n")
@@ -92,9 +95,19 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			return
 		}
 
+		isAdmin = true
+
 		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr())
 	} else {
-		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "from", s.RemoteAddr())
+		_, claims, err := cs.checkIsAuthenticatedUser(token)
+		if err != nil {
+			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr(), "error", err)
+			_, _ = io.WriteString(s, err.Error()+"\n")
+			cs.exitSession(s)
+			return
+		}
+
+		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr())
 	}
 
 	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
@@ -390,13 +403,13 @@ func loadPublicHostKey() (gossh.PublicKey, error) {
 }
 
 func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
-	isAdmin, _, err := cs.checkIsAdmin(ctx.User(), password)
+	_, err := cs.checkIsAdmin(ctx.User())
 	if err != nil {
-		cs.log.Error("error evaluating if user is admin", "error", err)
+		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User(), "error", err)
 		return false
 	}
 
-	return isAdmin
+	return true
 }
 
 func oidcTokenFromSessionEnv(s ssh.Session) string {
@@ -410,37 +423,46 @@ func oidcTokenFromSessionEnv(s ssh.Session) string {
 	return ""
 }
 
-func (cs *consoleServer) checkIsAdmin(machineID string, token string) (bool, jwt.Claims, error) {
+func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*models.V1User, jwt.Claims, error) {
 	if token == "" {
-		return false, nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
+		return nil, nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
 
 	claims := &jwt.MapClaims{}
 	_, _, err := new(jwt.Parser).ParseUnverified(string(token), claims)
 	if err != nil {
-		return false, nil, fmt.Errorf("unable to parse jwt: %w", err)
+		return nil, nil, fmt.Errorf("unable to parse jwt: %w", err)
 	}
 
 	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
 	if err != nil {
-		return false, claims, fmt.Errorf("failed to create metal client: %w", err)
+		return nil, claims, fmt.Errorf("failed to create metal client: %w", err)
 	}
 
 	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
 	if err != nil {
-		cs.log.Error("failed to fetch user details from oidc token", "machineID", machineID, "error", err, "token", token)
-		return false, claims, fmt.Errorf("given oidc token is invalid")
+		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
+		return nil, claims, fmt.Errorf("given oidc token is invalid")
+	}
+
+	return user.Payload, claims, nil
+}
+
+func (cs *consoleServer) checkIsAdmin(token string) (jwt.Claims, error) {
+	user, claims, err := cs.checkIsAuthenticatedUser(token)
+	if err != nil {
+		return claims, err
 	}
 
 	isAdmin := false
-	for _, g := range user.Payload.Groups {
+	for _, g := range user.Groups {
 		if g == cs.spec.AdminGroupName {
 			isAdmin = true
 		}
 	}
 	if !isAdmin {
-		return false, claims, fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
+		return claims, fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
 	}
 
-	return true, claims, nil
+	return claims, nil
 }
