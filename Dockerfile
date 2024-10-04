@@ -1,10 +1,8 @@
-FROM golang:1.22 as builder
+FROM golang:1.23 AS builder
 WORKDIR /work
 COPY . .
 RUN make
 
-FROM alpine:3.20
-
+FROM gcr.io/distroless/static-debian12
 COPY --from=builder /work/bin/metal-console /
-
 CMD ["/metal-console"]
