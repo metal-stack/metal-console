@@ -19,10 +19,10 @@ jobs:
         username: ${{ secrets.DOCKER_REGISTRY_USER }}
         password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22.x'
+        go-version: '1.23.x'
 
     - name: Lint
       uses: golangci/golangci-lint-action@v6
@@ -34,6 +34,6 @@ jobs:
         docker build -f Dockerfile -t ghcr.io/metal-stack/metal-console .
         docker push ghcr.io/metal-stack/metal-console
     
-    - uses: release-drafter/release-drafter@v5
+    - uses: release-drafter/release-drafter@v6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
