@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/gliderlabs/ssh v0.3.7
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/metal-stack/metal-go v0.37.1
 	github.com/metal-stack/metal-lib v0.18.3
