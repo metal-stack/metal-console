@@ -74,10 +74,10 @@ github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/metal-stack/metal-go v0.37.2 h1:SDIuV43y09kmwtHfsReOZoZ7c2F+lNP4iIhazfJL5tQ=
 github.com/metal-stack/metal-go v0.37.2/go.mod h1:3MJTYCS4YJz8D8oteTKhjpaAKNMMjMKYDrIy9awHGtQ=
-github.com/metal-stack/metal-lib v0.18.5-0.20241105090740-5a2d62288aa1 h1:SZQaYoS94qrmsObjvQyreFBCCVymL5NHx60RPj/oLbE=
-github.com/metal-stack/metal-lib v0.18.5-0.20241105090740-5a2d62288aa1/go.mod h1:J8ChhEMq3GglgCLCc//9crUddzcpB+sHKUTDra9g6IM=
-github.com/metal-stack/security v0.8.4-0.20241105084829-55653c3f1215 h1:2JH9amuAc2Uf2t34768B1T/Fznw5qklvCzrjNtUvebs=
-github.com/metal-stack/security v0.8.4-0.20241105084829-55653c3f1215/go.mod h1:6pQhJ4Kdu4BKnjB4zyzfK9skiHymqfrqt63Y+UmZBKA=
+github.com/metal-stack/metal-lib v0.19.0 h1:4yBnp/jPGgX9KeCje3A4MFL2oDjgjOjgsIK391LltRI=
+github.com/metal-stack/metal-lib v0.19.0/go.mod h1:fCMaWwVGA/xAoGvBk72/nfzqBkHly0iOzrWpc55Fau4=
+github.com/metal-stack/security v0.9.0 h1:FYBXJfNJwUw2E0HBa+jay37XF7b6EikEuf4Mw8u04EY=
+github.com/metal-stack/security v0.9.0/go.mod h1:6pQhJ4Kdu4BKnjB4zyzfK9skiHymqfrqt63Y+UmZBKA=
 github.com/metal-stack/v v1.0.3 h1:Sh2oBlnxrCUD+mVpzfC8HiqL045YWkxs0gpTvkjppqs=
 github.com/metal-stack/v v1.0.3/go.mod h1:YTahEu7/ishwpYKnp/VaW/7nf8+PInogkfGwLcGPdXg=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=

@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/metal-stack/metal-go v0.37.2
-	github.com/metal-stack/metal-lib v0.18.5-0.20241105090740-5a2d62288aa1
+	github.com/metal-stack/metal-lib v0.19.0
 	github.com/metal-stack/v v1.0.3
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/crypto v0.28.0
@@ -43,7 +43,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.1.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/metal-stack/security v0.8.4-0.20241105084829-55653c3f1215 // indirect
+	github.com/metal-stack/security v0.9.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
