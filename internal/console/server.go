@@ -121,7 +121,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		cs.log.Error("failed to connect to management network", "error", err)
 		return
 	}
-	defer tcpConn.Close()
 
 	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
 	if err != nil {
@@ -129,9 +128,10 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 	defer func() {
-		sshSession.Close()
-		sshClient.Close()
-		sshConn.Close()
+		_ = tcpConn.Close()
+		_ = sshSession.Close()
+		_ = sshClient.Close()
+		_ = sshConn.Close()
 	}()
 
 	cs.requestPTY(sshSession)
