@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -32,14 +36,16 @@ jobs:
     - name: Lint
       uses: golangci/golangci-lint-action@v7
 
-    - name: Build Docker image
-      run: |
-        export GITHUB_TAG_NAME=${GITHUB_HEAD_REF##*/}
-        docker build -f Dockerfile -t ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME} .
+    - name: Make tag
+      run: echo "tag=pr-${GITHUB_HEAD_REF##*/}" >> $GITHUB_ENV || true
 
-    - name: Push Docker image
-      run: |
-        export GITHUB_TAG_NAME=${GITHUB_HEAD_REF##*/}
-        # pull request images are prefixed with 'pr' to prevent them from overriding released images
-        docker push ghcr.io/metal-stack/metal-console:pr-${GITHUB_TAG_NAME}
-      if: steps.fork.outputs.is_fork_pr == 'false'
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: ${{ steps.fork.outputs.is_fork_pr == 'false' }}
+        sbom: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.tag }}
