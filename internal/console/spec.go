@@ -3,12 +3,11 @@ package console
 // Specification configures the application via environment.
 type Specification struct {
 	BindAddress            string `default:"localhost"`
-	MetalAPIURL            string `default:"http://localhost:8080" envconfig:"metal_api_url"`
+	MetalAPIServerURL      string `default:"http://localhost:8080" envconfig:"metal_apiserver_url"`
 	Port                   int    `default:"2222"`
-	HMACKey                string `default:"" envconfig:"hmac_key"`
+	Token                  string `default:"" envconfig:"token"`
 	PublicKey              string `default:"" split_words:"true"`
 	BmcReverseProxyAddress string `default:"" split_words:"true"`
-	AdminGroupName         string `default:"maas-all-all-admin" envconfig:"admin_group_name" split_words:"true"`
 }
 
 func (s *Specification) DevMode() bool {

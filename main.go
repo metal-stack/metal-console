@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
+	apiclient "github.com/metal-stack/api/go/client"
 	"github.com/metal-stack/metal-console/internal/console"
-	metalgo "github.com/metal-stack/metal-go"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/v"
@@ -23,14 +23,17 @@ func main() {
 		panic(err)
 	}
 
-	// FIXME metal-view is enough
-	client, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
+	client, err := apiclient.New(&apiclient.DialConfig{
+		BaseURL: spec.MetalAPIServerURL,
+		Token:   spec.Token,
+		// TODO enable token refresh
+	})
 	if err != nil {
 		log.Error("failed to create metal client", "error", err)
 		panic(err)
 	}
 
-	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-api", spec.MetalAPIURL, "devmode", spec.DevMode())
+	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL, "devmode", spec.DevMode())
 	if err := console.NewServer(log, spec, client).Run(); err != nil {
 		log.Error("unable to start console server", "error", err)
 		panic(err)

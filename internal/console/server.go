@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,11 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-	metalgo "github.com/metal-stack/metal-go"
-	"github.com/metal-stack/metal-go/api/client/machine"
-	"github.com/metal-stack/metal-go/api/client/user"
-	"github.com/metal-stack/metal-go/api/models"
+	"connectrpc.com/connect"
+	"github.com/metal-stack/api/go/client"
+	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
+	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
+
 	"github.com/metal-stack/metal-lib/pkg/pointer"
 
 	"github.com/gliderlabs/ssh"
@@ -25,12 +26,12 @@ import (
 
 type consoleServer struct {
 	log        *slog.Logger
-	client     metalgo.Client
+	client     client.Client
 	spec       *Specification
 	createdAts *sync.Map
 }
 
-func NewServer(log *slog.Logger, spec *Specification, client metalgo.Client) *consoleServer {
+func NewServer(log *slog.Logger, spec *Specification, client client.Client) *consoleServer {
 	return &consoleServer{
 		log:        log,
 		client:     client,
@@ -67,50 +68,56 @@ const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
-	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
-	if err != nil || resp == nil || resp.Payload == nil {
+	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+		Uuid: machineID,
+	}))
+	if err != nil {
 		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		cs.exitSession(s)
 		return
 	}
 
 	var (
-		m       = resp.Payload
-		role    = pointer.SafeDeref(pointer.SafeDeref(m.Allocation).Role)
+		m       = resp.Msg.Machine
+		role    = pointer.SafeDeref(m.Allocation).AllocationType
 		isAdmin = false
 		token   = oidcTokenFromSessionEnv(s)
 	)
 
-	if role != models.V1MachineAllocationRoleMachine || s.PublicKey() == nil {
+	if role != apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_MACHINE || s.PublicKey() == nil {
 		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
 		// check if the ssh session contains the oidc token and the user is member of admin group
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-		var claims jwt.Claims
-		claims, err = cs.checkIsAdmin(token)
-		if err != nil {
-			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr(), "error", err)
-			_, _ = io.WriteString(s, err.Error()+"\n")
+		if !cs.checkIsAdmin(token) {
+			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 			cs.exitSession(s)
 			return
 		}
 
 		isAdmin = true
 
-		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr())
+		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 	} else {
-		_, claims, err := cs.checkIsAuthenticatedUser(token)
+		_, err := cs.checkIsAuthenticatedUser(token)
 		if err != nil {
-			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr(), "error", err)
+			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr(), "error", err)
 			_, _ = io.WriteString(s, err.Error()+"\n")
 			cs.exitSession(s)
 			return
 		}
 
-		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "claims", claims, "from", s.RemoteAddr())
+		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 	}
 
-	mgmtServiceAddress := m.Partition.Mgmtserviceaddress
+	mgmtServiceAddresses := m.Partition.MgmtServiceAddresses
+	if len(mgmtServiceAddresses) == 0 {
+		cs.log.Error("failed to connect to management network, no management server address given", "error", err)
+		return
+	}
+
+	// TODO try all available addresses round robin
+	mgmtServiceAddress := mgmtServiceAddresses[1]
 
 	if cs.spec.DevMode() {
 		mgmtServiceAddress = cs.spec.BmcReverseProxyAddress
@@ -177,20 +184,22 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 
-			m, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
+			m, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+				Uuid: machineID,
+			}))
 			if err != nil {
 				cs.log.Error("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
-			if m.Payload.Allocation == nil {
+			if m.Msg.Machine == nil || m.Msg.Machine.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Info("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				return
 			}
-			if createdAt != m.Payload.Allocation.Created.String() {
+			if createdAt != m.Msg.Machine.Allocation.Meta.CreatedAt.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Info("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Payload.Allocation.Created.String())
+				cs.log.Info("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Msg.Machine.Allocation.Meta.CreatedAt.String())
 				cs.exitSession(s)
 				return
 			}
@@ -349,18 +358,20 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
-	resp, err := cs.client.Machine().FindMachine(machine.NewFindMachineParams().WithID(machineID), nil)
+	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+		Uuid: machineID,
+	}))
 	if err != nil {
 		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		return nil, err
 	}
-	if resp.Payload == nil || resp.Payload.Allocation == nil {
+	if resp.Msg.Machine == nil || resp.Msg.Machine.Allocation == nil {
 		cs.log.Error("requested machine is nil", "machineID", machineID)
 		return nil, fmt.Errorf("no machine found with id: %s", machineID)
 	}
-	alloc := resp.Payload.Allocation
+	alloc := resp.Msg.Machine.Allocation
 
-	cs.createdAts.Store(machineID, alloc.Created.String())
+	cs.createdAts.Store(machineID, alloc.Meta.CreatedAt.String())
 
 	if cs.spec.DevMode() {
 		bb, err := os.ReadFile(cs.spec.PublicKey)
@@ -368,13 +379,13 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.Pu
 			cs.log.Error("failed to read public key", "file", cs.spec.PublicKey)
 			return nil, err
 		}
-		alloc.SSHPubKeys = []string{
+		alloc.SshPublicKeys = []string{
 			string(bb),
 		}
 	}
 
 	var pubKeys []ssh.PublicKey
-	for _, key := range alloc.SSHPubKeys {
+	for _, key := range alloc.SshPublicKeys {
 		pubKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
 		if err != nil {
 			return nil, fmt.Errorf("error parsing public key:%w", err)
@@ -403,9 +414,8 @@ func loadPublicHostKey() (gossh.PublicKey, error) {
 }
 
 func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
-	_, err := cs.checkIsAdmin(password)
-	if err != nil {
-		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User(), "error", err)
+	if !cs.checkIsAdmin(password) {
+		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User())
 		return false
 	}
 
@@ -423,47 +433,33 @@ func oidcTokenFromSessionEnv(s ssh.Session) string {
 	return ""
 }
 
-func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*models.V1User, jwt.Claims, error) {
+func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
 	if token == "" {
-		return nil, nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
 
-	claims := &jwt.MapClaims{}
-	_, _, err := new(jwt.Parser).ParseUnverified(token, claims)
+	client, err := client.New(&client.DialConfig{
+		BaseURL: cs.spec.MetalAPIServerURL,
+		Token:   token,
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to parse jwt %q: %w", token, err)
+		return nil, fmt.Errorf("failed to create metal-apiserver client: %w", err)
 	}
 
-	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
-	if err != nil {
-		return nil, claims, fmt.Errorf("failed to create metal client: %w", err)
-	}
-
-	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
+	resp, err := client.Apiv2().Method().TokenScopedList(context.Background(), connect.NewRequest(&apiv2.MethodServiceTokenScopedListRequest{}))
 	if err != nil {
 		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
-		return nil, claims, fmt.Errorf("given oidc token is invalid")
+		return nil, fmt.Errorf("given oidc token is invalid")
 	}
 
-	return user.Payload, claims, nil
+	return resp.Msg, nil
 }
 
-func (cs *consoleServer) checkIsAdmin(token string) (jwt.Claims, error) {
-	user, claims, err := cs.checkIsAuthenticatedUser(token)
+func (cs *consoleServer) checkIsAdmin(token string) bool {
+	tokenResp, err := cs.checkIsAuthenticatedUser(token)
 	if err != nil {
-		return claims, err
+		return false
 	}
 
-	isAdmin := false
-	for _, g := range user.Groups {
-		if g == cs.spec.AdminGroupName {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
-		return claims, fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
-	}
-
-	return claims, nil
+	return tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR.Enum()
 }
