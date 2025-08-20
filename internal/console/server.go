@@ -68,6 +68,7 @@ const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
+	// we must use adminv2 because otherwise project must be passed which is not known here
 	resp, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	}))
@@ -183,7 +184,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 			return
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
-
+			// we must use adminv2 because otherwise project must be passed which is not known here
 			m, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
 				Uuid: machineID,
 			}))
@@ -358,6 +359,7 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 }
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
+	// we must use adminv2 because otherwise project must be passed which is not known here
 	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	}))
