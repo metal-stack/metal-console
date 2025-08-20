@@ -68,7 +68,7 @@ const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
-	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+	resp, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	}))
 	if err != nil {
@@ -89,7 +89,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		// check if the ssh session contains the oidc token and the user is member of admin group
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-		if !cs.checkIsAdmin(token) {
+		if !cs.checkIsAdmin(s.Context(), token) {
 			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 			cs.exitSession(s)
 			return
@@ -99,7 +99,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 	} else {
-		_, err := cs.checkIsAuthenticatedUser(token)
+		_, err := cs.checkIsAuthenticatedUser(s.Context(), token)
 		if err != nil {
 			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr(), "error", err)
 			_, _ = io.WriteString(s, err.Error()+"\n")
@@ -184,7 +184,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 
-			m, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+			m, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
 				Uuid: machineID,
 			}))
 			if err != nil {
@@ -414,7 +414,7 @@ func loadPublicHostKey() (gossh.PublicKey, error) {
 }
 
 func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
-	if !cs.checkIsAdmin(password) {
+	if !cs.checkIsAdmin(ctx, password) {
 		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User())
 		return false
 	}
@@ -433,7 +433,7 @@ func oidcTokenFromSessionEnv(s ssh.Session) string {
 	return ""
 }
 
-func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
+func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
 	if token == "" {
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
@@ -446,7 +446,7 @@ func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*apiv2.MethodSe
 		return nil, fmt.Errorf("failed to create metal-apiserver client: %w", err)
 	}
 
-	resp, err := client.Apiv2().Method().TokenScopedList(context.Background(), connect.NewRequest(&apiv2.MethodServiceTokenScopedListRequest{}))
+	resp, err := client.Apiv2().Method().TokenScopedList(ctx, connect.NewRequest(&apiv2.MethodServiceTokenScopedListRequest{}))
 	if err != nil {
 		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
 		return nil, fmt.Errorf("given oidc token is invalid")
@@ -455,8 +455,8 @@ func (cs *consoleServer) checkIsAuthenticatedUser(token string) (*apiv2.MethodSe
 	return resp.Msg, nil
 }
 
-func (cs *consoleServer) checkIsAdmin(token string) bool {
-	tokenResp, err := cs.checkIsAuthenticatedUser(token)
+func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
+	tokenResp, err := cs.checkIsAuthenticatedUser(ctx, token)
 	if err != nil {
 		return false
 	}
