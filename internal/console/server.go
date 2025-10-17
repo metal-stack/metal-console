@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/metal-stack/api/go/client"
 	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
@@ -69,9 +68,9 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
 	// we must use adminv2 because otherwise project must be passed which is not known here
-	resp, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+	resp, err := cs.client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
-	}))
+	})
 	if err != nil {
 		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		cs.exitSession(s)
@@ -79,7 +78,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 
 	var (
-		m       = resp.Msg.Machine
+		m       = resp.Machine
 		role    = pointer.SafeDeref(m.Allocation).AllocationType
 		isAdmin = false
 		token   = oidcTokenFromSessionEnv(s)
@@ -185,22 +184,22 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 			// we must use adminv2 because otherwise project must be passed which is not known here
-			m, err := cs.client.Adminv2().Machine().Get(s.Context(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+			m, err := cs.client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
 				Uuid: machineID,
-			}))
+			})
 			if err != nil {
 				cs.log.Error("unable to load machine", "machineID", machineID, "error", err)
 				continue
 			}
-			if m.Msg.Machine == nil || m.Msg.Machine.Allocation == nil {
+			if m.Machine == nil || m.Machine.Allocation == nil {
 				_, _ = io.WriteString(s, "machine is not allocated anymore, terminating console session\n")
 				cs.log.Info("machine is not allocated anymore, terminating ssh session", "machineID", machineID)
 				cs.exitSession(s)
 				return
 			}
-			if createdAt != m.Msg.Machine.Allocation.Meta.CreatedAt.String() {
+			if createdAt != m.Machine.Allocation.Meta.CreatedAt.String() {
 				_, _ = io.WriteString(s, "machine allocation changed, terminating console session\n")
-				cs.log.Info("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Msg.Machine.Allocation.Meta.CreatedAt.String())
+				cs.log.Info("machine allocation changed, terminating ssh session", "machineID", machineID, "old-ts", createdAt, "new-ts", m.Machine.Allocation.Meta.CreatedAt.String())
 				cs.exitSession(s)
 				return
 			}
@@ -360,18 +359,18 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
 	// we must use adminv2 because otherwise project must be passed which is not known here
-	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), connect.NewRequest(&adminv2.MachineServiceGetRequest{
+	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), &adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
-	}))
+	})
 	if err != nil {
 		cs.log.Error("failed to fetch requested machine", "machineID", machineID, "error", err)
 		return nil, err
 	}
-	if resp.Msg.Machine == nil || resp.Msg.Machine.Allocation == nil {
+	if resp.Machine == nil || resp.Machine.Allocation == nil {
 		cs.log.Error("requested machine is nil", "machineID", machineID)
 		return nil, fmt.Errorf("no machine found with id: %s", machineID)
 	}
-	alloc := resp.Msg.Machine.Allocation
+	alloc := resp.Machine.Allocation
 
 	cs.createdAts.Store(machineID, alloc.Meta.CreatedAt.String())
 
@@ -448,13 +447,13 @@ func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token str
 		return nil, fmt.Errorf("failed to create metal-apiserver client: %w", err)
 	}
 
-	resp, err := client.Apiv2().Method().TokenScopedList(ctx, connect.NewRequest(&apiv2.MethodServiceTokenScopedListRequest{}))
+	resp, err := client.Apiv2().Method().TokenScopedList(ctx, &apiv2.MethodServiceTokenScopedListRequest{})
 	if err != nil {
 		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
 		return nil, fmt.Errorf("given oidc token is invalid")
 	}
 
-	return resp.Msg, nil
+	return resp, nil
 }
 
 func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
