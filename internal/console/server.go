@@ -113,11 +113,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	mgmtServiceAddresses := m.Partition.MgmtServiceAddresses
 	if len(mgmtServiceAddresses) == 0 {
 		cs.log.Error("failed to connect to management network, no management server address given", "error", err)
+		cs.exitSession(s)
 		return
 	}
 
 	// TODO try all available addresses round robin
-	mgmtServiceAddress := mgmtServiceAddresses[1]
+	mgmtServiceAddress := mgmtServiceAddresses[0]
 
 	if cs.spec.DevMode() {
 		mgmtServiceAddress = cs.spec.BmcReverseProxyAddress
@@ -339,7 +340,7 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 
 	cs.log.Info("evaluating machine console access with public key access", "machineID", machineID, "publicKey", publicKey)
 
-	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(machineID)
+	knownAuthorizedKeys, err := cs.getAuthorizedKeysForMachine(ctx, machineID)
 	if err != nil {
 		cs.log.Error("abort establishment of console session", "machineID", machineID, "error", err)
 		return false
@@ -357,9 +358,9 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 	return false
 }
 
-func (cs *consoleServer) getAuthorizedKeysForMachine(machineID string) ([]ssh.PublicKey, error) {
+func (cs *consoleServer) getAuthorizedKeysForMachine(ctx context.Context, machineID string) ([]ssh.PublicKey, error) {
 	// we must use adminv2 because otherwise project must be passed which is not known here
-	resp, err := cs.client.Adminv2().Machine().Get(context.Background(), &adminv2.MachineServiceGetRequest{
+	resp, err := cs.client.Adminv2().Machine().Get(ctx, &adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	})
 	if err != nil {
