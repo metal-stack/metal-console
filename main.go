@@ -9,9 +9,12 @@ import (
 	apiclient "github.com/metal-stack/api/go/client"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
 	"github.com/metal-stack/metal-console/internal/console"
+	"github.com/metal-stack/metal-console/internal/metalutil"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/v"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 func main() {
@@ -26,11 +29,31 @@ func main() {
 		panic(err)
 	}
 
-	client, err := apiclient.New(&apiclient.DialConfig{
+	dial := &apiclient.DialConfig{
 		BaseURL: spec.MetalAPIServerURL,
 		Token:   spec.Token,
-		// TODO enable token refresh
-	})
+	}
+
+	if spec.TokenRenewalPersistence {
+		cfg, err := rest.InClusterConfig()
+		if err != nil {
+			panic(err)
+		}
+		cs, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			panic(err)
+		}
+		persisterFn, err := metalutil.NewPersistTokenFunc(spec.TokenRenewalNamespace, spec.TokenRenewalSecretName, spec.TokenRenewalSecretKey, cs)
+		if err != nil {
+			panic(err)
+		}
+
+		dial.TokenRenewal = &apiclient.TokenRenewal{
+			PersistTokenFn: persisterFn,
+		}
+	}
+
+	client, err := apiclient.New(dial)
 	if err != nil {
 		log.Error("failed to create metal client", "error", err)
 		panic(err)
