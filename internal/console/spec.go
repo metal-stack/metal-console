@@ -8,7 +8,7 @@ type Specification struct {
 	Token                   string `default:"" envconfig:"token"`
 	TokenRenewalPersistence bool   `envconfig:"token_renew_persistence"`
 	TokenRenewalNamespace   string `default:"" envconfig:"token_renewal_namespace"`
-	TokenRenewalSecretName  string `default:"" envconfig:"token_renewal_secret_name"`
+	TokenRenewalSecretName  string `default:"metal-console-token" envconfig:"token_renewal_secret_name"`
 	TokenRenewalSecretKey   string `default:"token" envconfig:"token_renewal_secret_key"`
 	PublicKey               string `default:"" split_words:"true"`
 	BmcReverseProxyAddress  string `default:"" split_words:"true"`

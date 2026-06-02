@@ -35,16 +35,22 @@ func main() {
 	}
 
 	if spec.TokenRenewalPersistence {
+		log.Info("setting up token renewal persistence", "namespace", spec.TokenRenewalNamespace, "secret", spec.TokenRenewalSecretName)
+
 		cfg, err := rest.InClusterConfig()
 		if err != nil {
+			log.Error("failed to fetch in cluster rest config", "error", err)
 			panic(err)
 		}
 		cs, err := kubernetes.NewForConfig(cfg)
 		if err != nil {
+			log.Error("failed to create in cluster client", "error", err)
 			panic(err)
 		}
+
 		persisterFn, err := metalutil.NewPersistTokenFunc(spec.TokenRenewalNamespace, spec.TokenRenewalSecretName, spec.TokenRenewalSecretKey, cs)
 		if err != nil {
+			log.Error("failed to create token persister", "error", err)
 			panic(err)
 		}
 
