@@ -32,6 +32,7 @@ func main() {
 	dial := &apiclient.DialConfig{
 		BaseURL: spec.MetalAPIServerURL,
 		Token:   spec.Token,
+		Log:     log,
 	}
 
 	if spec.TokenRenewalPersistence {
