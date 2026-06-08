@@ -35,7 +35,7 @@ func main() {
 		Log:     log,
 	}
 
-	if spec.TokenRenewalPersistence {
+	if spec.TokenRenewalEnabled {
 		log.Info("setting up token renewal persistence", "namespace", spec.TokenRenewalNamespace, "secret", spec.TokenRenewalSecretName)
 
 		cfg, err := rest.InClusterConfig()
