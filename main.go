@@ -27,9 +27,9 @@ func main() {
 	}
 
 	client, err := apiclient.New(&apiclient.DialConfig{
-		BaseURL: spec.MetalAPIServerURL,
-		Token:   spec.Token,
-		// TODO enable token refresh
+		BaseURL:                 spec.MetalAPIServerURL,
+		TokenFile:               spec.TokenFile,
+		TokenFileRereadDuration: spec.TokenFileRereadDuration,
 	})
 	if err != nil {
 		log.Error("failed to create metal client", "error", err)
