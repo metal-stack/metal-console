@@ -50,5 +50,6 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          push: true
           sbom: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.tag }}
