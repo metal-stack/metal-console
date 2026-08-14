@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -554,14 +555,7 @@ func (cs *consoleServer) checkIsAdminV1(token string) error {
 		return err
 	}
 
-	isAdmin := false
-	for _, g := range user.Groups {
-		if g == cs.spec.AdminGroupName {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
+	if !slices.Contains(user.Groups, cs.spec.AdminGroupName) {
 		return fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
 	}
 
