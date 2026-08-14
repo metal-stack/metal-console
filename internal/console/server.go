@@ -443,7 +443,7 @@ func oidcTokenFromSessionEnv(s ssh.Session) string {
 }
 
 func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token string) error {
-	isV2, err := isV2TokenType(token)
+	isV2, err := cs.isV2TokenType(token)
 	if err != nil {
 		return err
 	}
@@ -462,10 +462,11 @@ func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token str
 }
 
 func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
-	isV2, err := isV2TokenType(token)
+	isV2, err := cs.isV2TokenType(token)
 	if err != nil {
 		return false
 	}
+	cs.log.Info("checkIsAdmin", "token type is apiv2", isV2)
 	if isV2 {
 		return cs.checkIsAdminV2(ctx, token)
 	}
@@ -474,13 +475,15 @@ func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
 	return err == nil
 }
 
-func isV2TokenType(token string) (bool, error) {
+func (cs *consoleServer) isV2TokenType(token string) (bool, error) {
 	claims := &jwt.MapClaims{}
 	parser := jwt.NewParser()
 	_, _, err := parser.ParseUnverified(token, claims)
 	if err != nil {
 		return false, err
 	}
+
+	cs.log.Info("isV2Token", "token", claims)
 
 	// APIv2 Token must contain either:
 	//  "type": "TOKEN_TYPE_API"
