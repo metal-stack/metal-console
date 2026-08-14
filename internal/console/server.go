@@ -13,9 +13,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/metal-stack/api/go/client"
 	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
+	metalgo "github.com/metal-stack/metal-go"
+	"github.com/metal-stack/metal-go/api/client/user"
+	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/metal-stack/metal-lib/pkg/pointer"
 
@@ -24,18 +28,20 @@ import (
 )
 
 type consoleServer struct {
-	log        *slog.Logger
-	client     client.Client
-	spec       *Specification
-	createdAts *sync.Map
+	log         *slog.Logger
+	apiv2client client.Client
+	apiv1client metalgo.Client
+	spec        *Specification
+	createdAts  *sync.Map
 }
 
-func NewServer(log *slog.Logger, spec *Specification, client client.Client) *consoleServer {
+func NewServer(log *slog.Logger, spec *Specification, apiv2client client.Client, apiv1client metalgo.Client) *consoleServer {
 	return &consoleServer{
-		log:        log,
-		client:     client,
-		spec:       spec,
-		createdAts: new(sync.Map),
+		log:         log,
+		apiv2client: apiv2client,
+		apiv1client: apiv1client,
+		spec:        spec,
+		createdAts:  new(sync.Map),
 	}
 }
 
@@ -68,7 +74,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
 
 	// we must use adminv2 because otherwise project must be passed which is not known here
-	resp, err := cs.client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
+	resp, err := cs.apiv2client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	})
 	if err != nil {
@@ -99,7 +105,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
 	} else {
-		_, err := cs.checkIsAuthenticatedUser(s.Context(), token)
+		err := cs.checkIsAuthenticatedUser(s.Context(), token)
 		if err != nil {
 			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr(), "error", err)
 			_, _ = io.WriteString(s, err.Error()+"\n")
@@ -185,7 +191,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 			// we must use adminv2 because otherwise project must be passed which is not known here
-			m, err := cs.client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
+			m, err := cs.apiv2client.Adminv2().Machine().Get(s.Context(), &adminv2.MachineServiceGetRequest{
 				Uuid: machineID,
 			})
 			if err != nil {
@@ -360,7 +366,7 @@ func (cs *consoleServer) publicKeyHandler(ctx ssh.Context, publicKey ssh.PublicK
 
 func (cs *consoleServer) getAuthorizedKeysForMachine(ctx context.Context, machineID string) ([]ssh.PublicKey, error) {
 	// we must use adminv2 because otherwise project must be passed which is not known here
-	resp, err := cs.client.Adminv2().Machine().Get(ctx, &adminv2.MachineServiceGetRequest{
+	resp, err := cs.apiv2client.Adminv2().Machine().Get(ctx, &adminv2.MachineServiceGetRequest{
 		Uuid: machineID,
 	})
 	if err != nil {
@@ -435,7 +441,64 @@ func oidcTokenFromSessionEnv(s ssh.Session) string {
 	return ""
 }
 
-func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
+func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token string) error {
+	isV2, err := isV2TokenType(token)
+	if err != nil {
+		return err
+	}
+	if isV2 {
+		_, err := cs.checkIsAuthenticatedUserV2(ctx, token)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, _, err = cs.checkIsAuthenticatedUserV1(token)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
+	isV2, err := isV2TokenType(token)
+	if err != nil {
+		return false
+	}
+	if isV2 {
+		return cs.checkIsAdminV2(ctx, token)
+	}
+
+	_, err = cs.checkIsAdminV1(token)
+	return err == nil
+}
+
+func isV2TokenType(token string) (bool, error) {
+	claims := &jwt.MapClaims{}
+	parser := jwt.NewParser()
+	_, _, err := parser.ParseUnverified(token, claims)
+	if err != nil {
+		return false, err
+	}
+
+	// APIv2 Token must contain either:
+	//  "type": "TOKEN_TYPE_API"
+	//  "type": "TOKEN_TYPE_USER"
+
+	// APIv1 Token must contain a "roles" slice
+	for k, v := range *claims {
+		if k == "type" && (v == "TOKEN_TYPE_API" || v == "TOKEN_TYPE_USER") {
+			return true, nil
+		}
+		if k == "roles" {
+			return false, nil
+		}
+	}
+
+	return false, fmt.Errorf("unable to detect token api version from claims: %v", claims)
+}
+
+func (cs *consoleServer) checkIsAuthenticatedUserV2(ctx context.Context, token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
 	if token == "" {
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
@@ -457,11 +520,56 @@ func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token str
 	return resp, nil
 }
 
-func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
-	tokenResp, err := cs.checkIsAuthenticatedUser(ctx, token)
+func (cs *consoleServer) checkIsAdminV2(ctx context.Context, token string) bool {
+	tokenResp, err := cs.checkIsAuthenticatedUserV2(ctx, token)
 	if err != nil {
 		return false
 	}
 
 	return tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR.Enum()
+}
+
+func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, jwt.Claims, error) {
+	if token == "" {
+		return nil, nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
+	}
+
+	claims := &jwt.MapClaims{}
+	_, _, err := new(jwt.Parser).ParseUnverified(token, claims)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to parse jwt %q: %w", token, err)
+	}
+
+	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
+	if err != nil {
+		return nil, claims, fmt.Errorf("failed to create metal client: %w", err)
+	}
+
+	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
+	if err != nil {
+		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
+		return nil, claims, fmt.Errorf("given oidc token is invalid")
+	}
+
+	return user.Payload, claims, nil
+}
+
+func (cs *consoleServer) checkIsAdminV1(token string) (jwt.Claims, error) {
+	user, claims, err := cs.checkIsAuthenticatedUserV1(token)
+	if err != nil {
+		return claims, err
+	}
+
+	isAdmin := false
+	for _, g := range user.Groups {
+		if g == cs.spec.AdminGroupName {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		return claims, fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
+	}
+
+	return claims, nil
 }
