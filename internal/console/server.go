@@ -531,7 +531,7 @@ func (cs *consoleServer) checkIsAdminV2(ctx context.Context, token string) bool 
 	}
 	cs.log.Info("checkIsAdminV2", "token scoped list", tokenResp)
 
-	return tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR.Enum()
+	return *tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR
 }
 
 func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, error) {
