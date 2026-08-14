@@ -453,7 +453,7 @@ func (cs *consoleServer) checkIsAuthenticatedUser(ctx context.Context, token str
 		}
 	}
 
-	_, _, err = cs.checkIsAuthenticatedUserV1(token)
+	_, err = cs.checkIsAuthenticatedUserV1(token)
 	if err != nil {
 		return err
 	}
@@ -469,7 +469,7 @@ func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
 		return cs.checkIsAdminV2(ctx, token)
 	}
 
-	_, err = cs.checkIsAdminV1(token)
+	err = cs.checkIsAdminV1(token)
 	return err == nil
 }
 
@@ -529,35 +529,29 @@ func (cs *consoleServer) checkIsAdminV2(ctx context.Context, token string) bool 
 	return tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR.Enum()
 }
 
-func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, jwt.Claims, error) {
+func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, error) {
 	if token == "" {
-		return nil, nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
-	}
-
-	claims := &jwt.MapClaims{}
-	_, _, err := new(jwt.Parser).ParseUnverified(token, claims)
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to parse jwt %q: %w", token, err)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
 	}
 
 	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
 	if err != nil {
-		return nil, claims, fmt.Errorf("failed to create metal client: %w", err)
+		return nil, fmt.Errorf("failed to create metal client: %w", err)
 	}
 
 	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
 	if err != nil {
 		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
-		return nil, claims, fmt.Errorf("given oidc token is invalid")
+		return nil, fmt.Errorf("given oidc token is invalid")
 	}
 
-	return user.Payload, claims, nil
+	return user.Payload, nil
 }
 
-func (cs *consoleServer) checkIsAdminV1(token string) (jwt.Claims, error) {
-	user, claims, err := cs.checkIsAuthenticatedUserV1(token)
+func (cs *consoleServer) checkIsAdminV1(token string) error {
+	user, err := cs.checkIsAuthenticatedUserV1(token)
 	if err != nil {
-		return claims, err
+		return err
 	}
 
 	isAdmin := false
@@ -568,8 +562,8 @@ func (cs *consoleServer) checkIsAdminV1(token string) (jwt.Claims, error) {
 		}
 	}
 	if !isAdmin {
-		return claims, fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
+		return fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
 	}
 
-	return claims, nil
+	return nil
 }
