@@ -45,7 +45,7 @@ func main() {
 
 	// Ping apiserver every 5min
 	apiv2client.Ping(context.Background(), &apiclient.PingConfig{
-		ComponentType: apiv2.ComponentType_COMPONENT_TYPE_METAL_IMAGE_CACHE_SYNC,
+		ComponentType: apiv2.ComponentType_COMPONENT_TYPE_METAL_CONSOLE,
 		StartedAt:     time.Now(),
 		Version: apiv2.Version{
 			Version:   v.Version,
