@@ -529,6 +529,7 @@ func (cs *consoleServer) checkIsAdminV2(ctx context.Context, token string) bool 
 	if err != nil {
 		return false
 	}
+	cs.log.Info("checkIsAdminV2", "token scoped list", tokenResp)
 
 	return tokenResp.AdminRole == apiv2.AdminRole_ADMIN_ROLE_EDITOR.Enum()
 }
