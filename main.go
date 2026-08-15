@@ -18,7 +18,7 @@ import (
 func main() {
 	spec := &console.Specification{}
 
-	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	log := slog.New(jsonHandler)
 
 	err := envconfig.Process("METAL_CONSOLE", spec)
@@ -37,6 +37,7 @@ func main() {
 		BaseURL:                 spec.MetalAPIServerURL,
 		TokenFile:               spec.TokenFile,
 		TokenFileRereadDuration: spec.TokenFileRereadDuration,
+		Log:                     log,
 	})
 	if err != nil {
 		log.Error("failed to create metal-apiserver v2 client", "error", err)
