@@ -34,10 +34,10 @@ func main() {
 	}
 
 	apiv2client, err := apiclient.New(&apiclient.DialConfig{
-		BaseURL:                 spec.MetalAPIServerURL,
-		TokenFile:               spec.TokenFile,
-		TokenFileRereadDuration: spec.TokenFileRereadDuration,
-		Log:                     log,
+		BaseURL:   spec.MetalAPIServerURL,
+		TokenFile: spec.TokenFile,
+		// TokenFileRereadDuration: spec.TokenFileRereadDuration,
+		Log: log,
 	})
 	if err != nil {
 		log.Error("failed to create metal-apiserver v2 client", "error", err)
