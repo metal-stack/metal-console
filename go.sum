@@ -110,8 +110,8 @@ github.com/lestrrat-go/jwx/v3 v3.2.0 h1:Jb3zBASTSZXz7gzzSAfYqxXF8KejvKC4xWoePLQq
 github.com/lestrrat-go/jwx/v3 v3.2.0/go.mod h1:38vQ8iWKq3qRSbilbzvzdQPuywhowwuR03lhkYskyrw=
 github.com/lestrrat-go/option/v2 v2.0.0 h1:XxrcaJESE1fokHy3FpaQ/cXW8ZsIdWcdFzzLOcID3Ss=
 github.com/lestrrat-go/option/v2 v2.0.0/go.mod h1:oSySsmzMoR0iRzCDCaUfsCzxQHUEuhOViQObyy7S6Vg=
-github.com/metal-stack/api v0.4.5-0.20260815090129-4cf94b769108 h1:ipoIXahhJo7HKF2Kz4mmxDNNglPVmACxZS5iFFA47Oo=
-github.com/metal-stack/api v0.4.5-0.20260815090129-4cf94b769108/go.mod h1:QbDG4YRFIkDf1z6cGmeu0m/791IAMyk8/9U/lsrxH8E=
+github.com/metal-stack/api v0.4.5-0.20260815115852-460cfe549da7 h1:vskfEW3H+KW1dtI4QES7KdpCrqBqGh34mYGnTmwE1Bk=
+github.com/metal-stack/api v0.4.5-0.20260815115852-460cfe549da7/go.mod h1:QbDG4YRFIkDf1z6cGmeu0m/791IAMyk8/9U/lsrxH8E=
 github.com/metal-stack/metal-go v0.45.0 h1:X5BCppdE3RYNScfwQxv9JTehyFIv6LhVzhbG25k27KQ=
 github.com/metal-stack/metal-go v0.45.0/go.mod h1:GSfXrAj55LGsUSMHWGDsmq5n056NG0yb1JM8bgfvKOw=
 github.com/metal-stack/metal-lib v0.26.3 h1:K5gLoD65m6p3l6qCPrfavIdvNdWfmF2QdXrvU2URaZs=
