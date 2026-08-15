@@ -32,8 +32,8 @@ github.com/go-openapi/jsonpointer v1.0.0 h1:kR9tHqY0CtZaOPVFm622dPVNhrvYpwr4uCxg
 github.com/go-openapi/jsonpointer v1.0.0/go.mod h1:Z3rw7dWu1p9IgitXCFamSlA5lmDiklEB6vkaxcNZW5Y=
 github.com/go-openapi/jsonreference v1.0.0 h1:jlmTr6torcd1YgDQvSfNmRtKzYDO4FGBkrAdlAVWnpY=
 github.com/go-openapi/jsonreference v1.0.0/go.mod h1:jtwdyGbJk0Xhe5Y+rwtglQP6Sb1WZST4rT32LWB+sv0=
-github.com/go-openapi/loads v0.25.0 h1:74Bc2snfaVlsHzwdQj/3gsA9XJz3daXTJVs+4ZaK7jI=
-github.com/go-openapi/loads v0.25.0/go.mod h1:JFBw4SIB9+PTIFHDfcXuSSy5h6aWzjtUCrPYyx3qWU8=
+github.com/go-openapi/loads v0.25.1 h1:toKQdIDLxlqfKLLGUUmUsiTd5/X0Chzvde9EGYQP/Ac=
+github.com/go-openapi/loads v0.25.1/go.mod h1:33Hen4tsKXHL45TyYojvfD5fZUFN4O1y4r/XhsRW2zc=
 github.com/go-openapi/runtime v0.33.0 h1:Dd3Oj2ig+WH8ckK95l0Wn2V8a4bH/UqWPRZVT0vc8yU=
 github.com/go-openapi/runtime v0.33.0/go.mod h1:+rsupH3+TFKqmFysqkmgBOTxpVJV8eV+j9myvvea2Xw=
 github.com/go-openapi/runtime/server-middleware v0.33.0 h1:ZFUNyaa2eUs9DhLd6MTe/QRsuxeYn4Lq0C8iAoY13XE=
@@ -114,8 +114,8 @@ github.com/metal-stack/api v0.4.5-0.20260815090129-4cf94b769108 h1:ipoIXahhJo7HK
 github.com/metal-stack/api v0.4.5-0.20260815090129-4cf94b769108/go.mod h1:QbDG4YRFIkDf1z6cGmeu0m/791IAMyk8/9U/lsrxH8E=
 github.com/metal-stack/metal-go v0.45.0 h1:X5BCppdE3RYNScfwQxv9JTehyFIv6LhVzhbG25k27KQ=
 github.com/metal-stack/metal-go v0.45.0/go.mod h1:GSfXrAj55LGsUSMHWGDsmq5n056NG0yb1JM8bgfvKOw=
-github.com/metal-stack/metal-lib v0.26.2 h1:ajPbC9wGe8LySw9J3JT03IGLZghvxsXSb7iceFp/FuQ=
-github.com/metal-stack/metal-lib v0.26.2/go.mod h1:cNXjPBs8SFnjqfBobuSbm5mDk6E/jS8PVeIOrV/7POE=
+github.com/metal-stack/metal-lib v0.26.3 h1:K5gLoD65m6p3l6qCPrfavIdvNdWfmF2QdXrvU2URaZs=
+github.com/metal-stack/metal-lib v0.26.3/go.mod h1:cNXjPBs8SFnjqfBobuSbm5mDk6E/jS8PVeIOrV/7POE=
 github.com/metal-stack/security v0.9.7 h1:JAKj/01gIyO4rY7DrrIGBK6X+27uvMX+XPgW15U2d7g=
 github.com/metal-stack/security v0.9.7/go.mod h1:6DFjP2KjdwrXF2aboQDrleo6/dZlGXoYtrV/YioKoFY=
 github.com/metal-stack/v v1.0.3 h1:Sh2oBlnxrCUD+mVpzfC8HiqL045YWkxs0gpTvkjppqs=
