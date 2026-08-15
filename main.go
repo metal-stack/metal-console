@@ -34,9 +34,8 @@ func main() {
 	}
 
 	apiv2client, err := apiclient.New(&apiclient.DialConfig{
-		BaseURL:      spec.MetalAPIServerURL,
-		TokenFile:    spec.TokenFile,
-		TokenRenewal: &apiclient.TokenRenewal{},
+		BaseURL:   spec.MetalAPIServerURL,
+		TokenFile: spec.TokenFile,
 		// TokenFileRereadDuration: spec.TokenFileRereadDuration,
 		Log: log,
 	})
