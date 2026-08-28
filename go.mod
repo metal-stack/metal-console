@@ -1,6 +1,6 @@
 module github.com/metal-stack/metal-console
 
-go 1.26.5
+go 1.27
 
 require (
 	github.com/gliderlabs/ssh v0.3.8
