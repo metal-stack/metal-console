@@ -9,18 +9,13 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/metal-stack/api/go/client"
 	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
-	metalgo "github.com/metal-stack/metal-go"
-	"github.com/metal-stack/metal-go/api/client/user"
-	"github.com/metal-stack/metal-go/api/models"
 
 	"github.com/metal-stack/metal-lib/pkg/pointer"
 
@@ -36,16 +31,14 @@ const (
 type consoleServer struct {
 	log         *slog.Logger
 	apiv2client client.Client
-	apiv1client metalgo.Client
 	spec        *Specification
 	createdAts  *sync.Map
 }
 
-func NewServer(log *slog.Logger, spec *Specification, apiv2client client.Client, apiv1client metalgo.Client) *consoleServer {
+func NewServer(log *slog.Logger, spec *Specification, apiv2client client.Client) *consoleServer {
 	return &consoleServer{
 		log:         log,
 		apiv2client: apiv2client,
-		apiv1client: apiv1client,
 		spec:        spec,
 		createdAts:  new(sync.Map),
 	}
@@ -463,35 +456,6 @@ func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
 	return err == nil
 }
 
-func (cs *consoleServer) isV2TokenType(token string) (bool, error) {
-	claims := &jwt.MapClaims{}
-	parser := jwt.NewParser()
-	_, _, err := parser.ParseUnverified(token, claims)
-	if err != nil {
-		return false, err
-	}
-
-	cs.log.Info("isV2Token", "token", claims)
-
-	// APIv2 Token must contain either:
-	//  "type": "TOKEN_TYPE_API"
-	//  "type": "TOKEN_TYPE_USER"
-
-	// APIv1 Token must contain a "roles" slice
-	for k, v := range *claims {
-		switch k {
-		case "type":
-			if v == apiv2.TokenType_TOKEN_TYPE_API.String() || v == apiv2.TokenType_TOKEN_TYPE_USER.String() {
-				return true, nil
-			}
-		case "roles":
-			return false, nil
-		}
-	}
-
-	return false, fmt.Errorf("unable to detect token api version from claims: %v", claims)
-}
-
 func (cs *consoleServer) checkIsAuthenticatedUserV2(ctx context.Context, token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
 	if token == "" {
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
@@ -522,36 +486,4 @@ func (cs *consoleServer) checkIsAdminV2(ctx context.Context, token string) bool 
 	cs.log.Info("checkIsAdminV2", "token scoped list", tokenResp)
 
 	return pointer.SafeDeref(tokenResp.AdminRole) == apiv2.AdminRole_ADMIN_ROLE_EDITOR
-}
-
-func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, error) {
-	if token == "" {
-		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
-	}
-
-	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create metal client: %w", err)
-	}
-
-	user, err := metal.User().GetMe(user.NewGetMeParams(), nil)
-	if err != nil {
-		cs.log.Error("failed to fetch user details from oidc token", "error", err, "token", token)
-		return nil, fmt.Errorf("given oidc token is invalid")
-	}
-
-	return user.Payload, nil
-}
-
-func (cs *consoleServer) checkIsAdminV1(token string) error {
-	user, err := cs.checkIsAuthenticatedUserV1(token)
-	if err != nil {
-		return err
-	}
-
-	if !slices.Contains(user.Groups, cs.spec.AdminGroupName) {
-		return fmt.Errorf("you are not member of required admin group:%s to access this machine console", cs.spec.AdminGroupName)
-	}
-
-	return nil
 }

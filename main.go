@@ -9,7 +9,6 @@ import (
 	apiclient "github.com/metal-stack/api/go/client"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
 	"github.com/metal-stack/metal-console/internal/console"
-	metalgo "github.com/metal-stack/metal-go"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/metal-stack/v"
@@ -24,12 +23,6 @@ func main() {
 	err := envconfig.Process("METAL_CONSOLE", spec)
 	if err != nil {
 		log.Error("failed to read env config", "error", err)
-		panic(err)
-	}
-
-	apiv1client, err := metalgo.NewDriver(spec.MetalAPIURL, "", spec.HMACKey)
-	if err != nil {
-		log.Error("failed to create metal-apiv1 client", "error", err)
 		panic(err)
 	}
 
@@ -57,7 +50,7 @@ func main() {
 	})
 
 	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL)
-	if err := console.NewServer(log, spec, apiv2client, apiv1client).Run(); err != nil {
+	if err := console.NewServer(log, spec, apiv2client).Run(); err != nil {
 		log.Error("unable to start console server", "error", err)
 		panic(err)
 	}
