@@ -24,8 +24,10 @@ import (
 )
 
 const (
-	// oidcEnv environment variable passed through ssh to forward the token
-	oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
+	// oidcTokenEnv environment variable passed through ssh to forward the token
+	oidcTokenEnv = "LC_METAL_STACK_OIDC_TOKEN"
+	// projectEnv environment variable passed through ssh to forward the metal project
+	projectEnv = "LC_METAL_STACK_PROJECT"
 )
 
 type consoleServer struct {
@@ -53,7 +55,12 @@ func (cs *consoleServer) Run() error {
 		PasswordHandler:  cs.passwordHandler,
 	}
 
-	hostKey, err := loadHostKey()
+	serverKey, err := os.ReadFile(cs.spec.PrivateKeyFile)
+	if err != nil {
+		return fmt.Errorf("failed to load private host key:%w", err)
+	}
+
+	hostKey, err := gossh.ParsePrivateKey(serverKey)
 	if err != nil {
 		return fmt.Errorf("failed to load host key %w", err)
 	}
@@ -271,7 +278,11 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 }
 
 func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session, error) {
-	pubHostKey, err := loadPublicHostKey()
+	bb, err := os.ReadFile(cs.spec.PublicKeyFile)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to load public host key:%w", err)
+	}
+	pubHostKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
 	if err != nil {
 		cs.log.Error("failed to load public host key", "error", err)
 		return nil, nil, nil, err
@@ -386,23 +397,6 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(ctx context.Context, machin
 	return pubKeys, nil
 }
 
-func loadHostKey() (gossh.Signer, error) {
-	bb, err := os.ReadFile("/certs/server-key.pem")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load private host key:%w", err)
-	}
-	return gossh.ParsePrivateKey(bb)
-}
-
-func loadPublicHostKey() (gossh.PublicKey, error) {
-	bb, err := os.ReadFile("/certs/server-key.pub")
-	if err != nil {
-		return nil, fmt.Errorf("failed to load public host key:%w", err)
-	}
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
-	return pubKey, err
-}
-
 func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool {
 	if !cs.checkIsAdmin(ctx, password) {
 		cs.log.Error("error evaluating if user is admin", "machineID", ctx.User())
@@ -414,7 +408,7 @@ func (cs *consoleServer) passwordHandler(ctx ssh.Context, password string) bool 
 
 func oidcTokenFromSessionEnv(s ssh.Session) string {
 	for _, env := range s.Environ() {
-		_, t, found := strings.Cut(env, oidcEnv+"=")
+		_, t, found := strings.Cut(env, oidcTokenEnv+"=")
 		if found {
 			return t
 		}
@@ -458,7 +452,7 @@ func (cs *consoleServer) checkIsAdmin(ctx context.Context, token string) bool {
 
 func (cs *consoleServer) checkIsAuthenticatedUserV2(ctx context.Context, token string) (*apiv2.MethodServiceTokenScopedListResponse, error) {
 	if token == "" {
-		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
 	}
 
 	client, err := client.New(&client.DialConfig{

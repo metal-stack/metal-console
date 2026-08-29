@@ -11,7 +11,7 @@ import (
 
 func (cs *consoleServer) checkIsAuthenticatedUserV1(token string) (*models.V1User, error) {
 	if token == "" {
-		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcEnv)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
 	}
 
 	metal, err := metalgo.NewDriver(cs.spec.MetalAPIURL, token, "")

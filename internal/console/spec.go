@@ -7,6 +7,10 @@ type Specification struct {
 	Port                   int    `default:"2222"`
 	BmcReverseProxyAddress string `default:"" split_words:"true"`
 
+	// Keys
+	PrivateKeyFile string `default:"/certs/server-key.pem" envconfig:"private_key_file"`
+	PublicKeyFile  string `default:"/certs/server-key.pub" envconfig:"public_key_file"`
+
 	// metal-apiserver (v2) configuration items
 	MetalAPIServerURL       string        `default:"http://localhost:8080" envconfig:"metal_apiserver_url"`
 	TokenFile               string        `default:"" envconfig:"token_file"`
