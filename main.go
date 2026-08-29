@@ -56,7 +56,7 @@ func main() {
 		},
 	})
 
-	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL, "devmode", spec.DevMode())
+	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL)
 	if err := console.NewServer(log, spec, apiv2client, apiv1client).Run(); err != nil {
 		log.Error("unable to start console server", "error", err)
 		panic(err)

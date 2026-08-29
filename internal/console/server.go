@@ -127,10 +127,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	// TODO try all available addresses round robin
 	mgmtServiceAddress := mgmtServiceAddresses[0]
 
-	if cs.spec.DevMode() {
-		mgmtServiceAddress = cs.spec.BmcReverseProxyAddress
-	}
-
 	tcpConn, err := cs.connectToManagementNetwork(mgmtServiceAddress)
 	if err != nil {
 		cs.log.Error("failed to connect to management network", "error", err)
@@ -381,17 +377,6 @@ func (cs *consoleServer) getAuthorizedKeysForMachine(ctx context.Context, machin
 	alloc := resp.Machine.Allocation
 
 	cs.createdAts.Store(machineID, alloc.Meta.CreatedAt.String())
-
-	if cs.spec.DevMode() {
-		bb, err := os.ReadFile(cs.spec.PublicKey)
-		if err != nil {
-			cs.log.Error("failed to read public key", "file", cs.spec.PublicKey)
-			return nil, err
-		}
-		alloc.SshPublicKeys = []string{
-			string(bb),
-		}
-	}
 
 	var pubKeys []ssh.PublicKey
 	for _, key := range alloc.SshPublicKeys {

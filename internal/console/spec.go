@@ -4,9 +4,7 @@ import "time"
 
 // Specification configures the application via environment.
 type Specification struct {
-	BindAddress            string `default:"localhost"`
 	Port                   int    `default:"2222"`
-	PublicKey              string `default:"" split_words:"true"`
 	BmcReverseProxyAddress string `default:"" split_words:"true"`
 
 	// metal-apiserver (v2) configuration items
@@ -18,8 +16,4 @@ type Specification struct {
 	MetalAPIURL    string `default:"http://localhost:8080" envconfig:"metal_api_url"`
 	HMACKey        string `default:"" envconfig:"hmac_key"`
 	AdminGroupName string `default:"maas-all-all-admin" envconfig:"admin_group_name" split_words:"true"`
-}
-
-func (s *Specification) DevMode() bool {
-	return len(s.PublicKey) > 0
 }
