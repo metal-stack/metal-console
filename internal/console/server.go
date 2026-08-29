@@ -28,6 +28,11 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
+const (
+	// oidcEnv environment variable passed through ssh to forward the token
+	oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
+)
+
 type consoleServer struct {
 	log         *slog.Logger
 	apiv2client client.Client
@@ -68,8 +73,6 @@ func (cs *consoleServer) Run() error {
 	}
 	return nil
 }
-
-const oidcEnv = "LC_METAL_STACK_OIDC_TOKEN"
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	machineID := s.User()
@@ -476,10 +479,12 @@ func (cs *consoleServer) isV2TokenType(token string) (bool, error) {
 
 	// APIv1 Token must contain a "roles" slice
 	for k, v := range *claims {
-		if k == "type" && (v == "TOKEN_TYPE_API" || v == "TOKEN_TYPE_USER") {
-			return true, nil
-		}
-		if k == "roles" {
+		switch k {
+		case "type":
+			if v == apiv2.TokenType_TOKEN_TYPE_API.String() || v == apiv2.TokenType_TOKEN_TYPE_USER.String() {
+				return true, nil
+			}
+		case "roles":
 			return false, nil
 		}
 	}
