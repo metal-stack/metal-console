@@ -3,8 +3,8 @@ package console
 import (
 	"testing"
 
-	"github.com/gliderlabs/ssh"
 	"github.com/stretchr/testify/require"
+	ssh "github.com/tailscale/gliderssh"
 )
 
 func TestLoadPublicHostKey(t *testing.T) {

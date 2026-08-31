@@ -29,8 +29,7 @@ func main() {
 	apiv2client, err := apiclient.New(&apiclient.DialConfig{
 		BaseURL:   spec.MetalAPIServerURL,
 		TokenFile: spec.TokenFile,
-		// TokenFileRereadDuration: spec.TokenFileRereadDuration,
-		Log: log,
+		Log:       log,
 	})
 	if err != nil {
 		log.Error("failed to create metal-apiserver v2 client", "error", err)
@@ -50,7 +49,7 @@ func main() {
 	})
 
 	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL)
-	if err := console.NewServer(log, spec, apiv2client).Run(); err != nil {
+	if err := console.NewServer(log, spec).Run(); err != nil {
 		log.Error("unable to start console server", "error", err)
 		panic(err)
 	}
