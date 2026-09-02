@@ -196,11 +196,15 @@ func TestSSHSessionWithPrivateKeyAndTokenEnv(t *testing.T) {
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	})
 	require.NoError(t, err)
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	session, err := client.NewSession()
 	require.NoError(t, err)
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	require.NoError(t, session.Setenv("LC_METAL_STACK_OIDC_TOKEN", "test-oidc-token"))
 	require.NoError(t, session.Setenv("LC_METAL_STACK_PROJECT", "test-project"))
