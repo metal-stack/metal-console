@@ -35,17 +35,14 @@ func NewServer(log *slog.Logger, spec *Specification) *consoleServer {
 // Run starts ssh server and listen for console connections.
 func (cs *consoleServer) Run() error {
 	s := &ssh.Server{
-		Addr: fmt.Sprintf(":%d", cs.spec.Port),
-		// has access to the token
+		Addr:    fmt.Sprintf(":%d", cs.spec.Port),
 		Handler: cs.sessionHandler,
-		// does not have access to the token, is called at the very beginning if the provided privateKey matches with the publickey of the machine
-		// but machine publicKey can only be fetched with the token in case of v2
+		// does not have access to the token, must be called to be able to store the publicKey in the session
+		// which will be then checked against the stored publickey in the machine by the sessionRequestCallback
 		PublicKeyHandler: cs.noopPublicKeyHandler,
-		// is called with the token (set as password by the cli) and is used for admin access
-		// PasswordHandler: cs.passwordHandler,
-		Banner: "metal-stack.io console server\n",
 		// Used to make validations if this session might be accepted or declined after the publicKeyhandler
 		SessionRequestCallback: cs.sessionRequestCallback,
+		Banner:                 "metal-stack.io console server\n",
 	}
 
 	serverKey, err := os.ReadFile(cs.spec.PrivateKeyFile)
@@ -238,9 +235,9 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 		cs.log.Error("failed to fetch stdin for SSH session", "error", err)
 	} else {
 		wg.Go(func() {
-			_, err = io.Copy(stdin, callerSSHSession)
-			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Error("failed to copy caller stdin to machine", "error", err)
+			_, copyErr := io.Copy(stdin, callerSSHSession)
+			if copyErr != nil && !errors.Is(copyErr, io.EOF) {
+				cs.log.Error("failed to copy caller stdin to machine", "error", copyErr)
 			}
 		})
 	}
@@ -250,9 +247,9 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 		cs.log.Error("failed to fetch stdout for SSH session", "error", err)
 	} else {
 		wg.Go(func() {
-			_, err = io.Copy(callerSSHSession, stdout)
-			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Error("failed to copy machine stdout to caller", "error", err)
+			_, copyErr := io.Copy(callerSSHSession, stdout)
+			if copyErr != nil && !errors.Is(copyErr, io.EOF) {
+				cs.log.Error("failed to copy machine stdout to caller", "error", copyErr)
 			}
 		})
 	}
@@ -262,9 +259,9 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 		cs.log.Error("failed to fetch stderr for SSH session", "error", err)
 	} else {
 		wg.Go(func() {
-			_, err = io.Copy(callerSSHSession, stderr)
-			if err != nil && !errors.Is(err, io.EOF) {
-				cs.log.Error("failed to copy machine stderr to caller", "error", err)
+			_, copyErr := io.Copy(callerSSHSession, stderr)
+			if copyErr != nil && !errors.Is(copyErr, io.EOF) {
+				cs.log.Error("failed to copy machine stderr to caller", "error", copyErr)
 			}
 		})
 	}
@@ -320,13 +317,13 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
 	clientCert, err := tls.LoadX509KeyPair(cs.spec.BMCCertFile, cs.spec.BMCKeyFile)
 	if err != nil {
-		cs.log.Error("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
+		cs.log.Error("failed to load client certificate", "cert", cs.spec.BMCCertFile, "key", cs.spec.BMCKeyFile, "error", err)
 		return nil, err
 	}
 
 	caCert, err := os.ReadFile(cs.spec.BMCCACertFile)
 	if err != nil {
-		cs.log.Error("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
+		cs.log.Error("failed to load CA certificate", "cert", cs.spec.BMCCACertFile, "error", err)
 		return nil, err
 	}
 	caCertPool := x509.NewCertPool()
