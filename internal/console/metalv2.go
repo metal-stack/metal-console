@@ -74,7 +74,7 @@ func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, e
 func (m *metalv2) checkIsAuthenticated(ctx context.Context) (*consoleUser, error) {
 	resp, err := m.client.Apiv2().Method().TokenScopedList(ctx, &apiv2.MethodServiceTokenScopedListRequest{})
 	if err != nil {
-		m.log.Error("failed to fetch user details from oidc token", "error", err, "token", m.token)
+		m.log.Error("failed to fetch user details from oidc token", "error", err)
 		return nil, err
 	}
 

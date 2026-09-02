@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"slices"
 	"time"
 
@@ -29,9 +28,6 @@ func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string, isadmi
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
 	}
 
-	if log.Enabled(context.Background(), slog.LevelDebug) {
-		_ = os.Setenv("DEBUG", "1")
-	}
 	metal, err := metalgo.NewDriver(metalapiv1Url, token, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metal client: %w", err)

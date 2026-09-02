@@ -1,23 +1,18 @@
 package console
 
-import "time"
-
 // Specification configures the application via environment.
 type Specification struct {
-	Port                   int    `default:"2222"`
-	BmcReverseProxyAddress string `default:"" split_words:"true"`
+	Port int `default:"2222"`
 
 	// Keys
 	PrivateKeyFile string `default:"/certs/server-key.pem" envconfig:"private_key_file"`
 	PublicKeyFile  string `default:"/certs/server-key.pub" envconfig:"public_key_file"`
 
 	// metal-apiserver (v2) configuration items
-	MetalAPIServerURL       string        `default:"http://localhost:8080" envconfig:"metal_apiserver_url"`
-	TokenFile               string        `default:"" envconfig:"token_file"`
-	TokenFileRereadDuration time.Duration `default:"1h" envconfig:"token_file_reread_duration"`
+	MetalAPIServerURL string `default:"http://localhost:8080" envconfig:"metal_apiserver_url"`
+	TokenFile         string `default:"" envconfig:"token_file"`
 
 	// old metal-api based configuration items, can be removed once v2 migration is complete
 	MetalAPIURL    string `default:"http://localhost:8080" envconfig:"metal_api_url"`
-	HMACKey        string `default:"" envconfig:"hmac_key"`
 	AdminGroupName string `default:"maas-all-all-admin" envconfig:"admin_group_name" split_words:"true"`
 }

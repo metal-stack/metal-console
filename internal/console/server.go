@@ -70,7 +70,11 @@ func (cs *consoleServer) Run() error {
 
 func (cs *consoleServer) sessionRequestCallback(s ssh.Session, requestType string) bool {
 	m := s.Context().Value("machine")
-	machine := m.(*machine)
+	machine, ok := m.(*machine)
+	if !ok {
+		cs.log.Error("unable to extract machine from ssh session context")
+		return false
+	}
 	if err := cs.checkAuthorizedKeys(*machine, s.PublicKey()); err != nil {
 		cs.log.Error("public key does not match", "error", err)
 		return false
@@ -95,7 +99,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	// we must use adminv2 because otherwise project must be passed which is not known here
 	machine, err := metal.getMachine(s.Context(), machineID)
 	if err != nil {
-		cs.log.Error("error fetching machine", "error", err)
+		cs.log.Error("failed to fetch machine", "error", err)
 		cs.exitSession(s, err)
 		return
 	}
@@ -134,7 +138,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	mgmtServiceAddresses := machine.managementServerAddresses
 	if len(mgmtServiceAddresses) == 0 {
-		cs.log.Error("failed to connect to management network, no management server address given", "error", err)
+		cs.log.Error("failed to connect to management network, no management server address given")
 		cs.exitSession(s, err)
 		return
 	}

@@ -23,7 +23,7 @@ func main() {
 	err := envconfig.Process("METAL_CONSOLE", spec)
 	if err != nil {
 		log.Error("failed to read env config", "error", err)
-		panic(err)
+		os.Exit(1)
 	}
 
 	apiv2client, err := apiclient.New(&apiclient.DialConfig{
@@ -33,7 +33,7 @@ func main() {
 	})
 	if err != nil {
 		log.Error("failed to create metal-apiserver v2 client", "error", err)
-		panic(err)
+		os.Exit(1)
 	}
 
 	// Ping apiserver every 5min
@@ -51,6 +51,6 @@ func main() {
 	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL)
 	if err := console.NewServer(log, spec).Run(); err != nil {
 		log.Error("unable to start console server", "error", err)
-		panic(err)
+		os.Exit(1)
 	}
 }
