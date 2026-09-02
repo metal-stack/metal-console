@@ -163,9 +163,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	cs.requestPTY(sshSession)
 
-	done := make(chan bool)
-
-	cs.redirectIO(s, sshSession, done)
+	wait := cs.redirectIO(s, sshSession)
 
 	if !isAdmin {
 		// check periodically if the session is still allowed.
@@ -179,8 +177,8 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	// wait till connection is closed
-	<-done
+	// wait till all io is done
+	wait()
 }
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session, metal metal) {
@@ -232,48 +230,46 @@ func (cs *consoleServer) exitSession(session ssh.Session, err error) {
 	}
 }
 
-func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSession *gossh.Session, done chan<- bool) {
+func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSession *gossh.Session) func() {
+	var wg sync.WaitGroup
+
 	stdin, err := machineSSHSession.StdinPipe()
 	if err != nil {
 		cs.log.Error("failed to fetch stdin for SSH session", "error", err)
 	} else {
-		go func() {
+		wg.Go(func() {
 			_, err = io.Copy(stdin, callerSSHSession)
 			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Error("failed to copy caller stdin to machine", "error", err)
 			}
-
-			done <- true
-		}()
+		})
 	}
 
 	stdout, err := machineSSHSession.StdoutPipe()
 	if err != nil {
 		cs.log.Error("failed to fetch stdout for SSH session", "error", err)
 	} else {
-		go func() {
+		wg.Go(func() {
 			_, err = io.Copy(callerSSHSession, stdout)
 			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Error("failed to copy machine stdout to caller", "error", err)
 			}
-
-			done <- true
-		}()
+		})
 	}
 
 	stderr, err := machineSSHSession.StderrPipe()
 	if err != nil {
 		cs.log.Error("failed to fetch stderr for SSH session", "error", err)
 	} else {
-		go func() {
+		wg.Go(func() {
 			_, err = io.Copy(callerSSHSession, stderr)
 			if err != nil && !errors.Is(err, io.EOF) {
 				cs.log.Error("failed to copy machine stderr to caller", "error", err)
 			}
-
-			done <- true
-		}()
+		})
 	}
+
+	return wg.Wait
 }
 
 func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
