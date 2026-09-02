@@ -93,14 +93,6 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	if s.PublicKey() != nil {
-		if err := cs.checkAuthorizedKeys(*machine, s.PublicKey()); err != nil {
-			cs.log.Error("public key does not match", "error", err)
-			cs.exitSession(s, err)
-			return
-		}
-	}
-
 	cs.createdAts.Store(machineID, machine.createdAt.String())
 	defer cs.createdAts.Delete(machineID)
 
@@ -131,6 +123,14 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		}
 
 		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "from", s.RemoteAddr())
+	}
+
+	if !isAdmin {
+		if err := cs.checkAuthorizedKeys(*machine, s.PublicKey()); err != nil {
+			cs.log.Error("public key does not match", "error", err)
+			cs.exitSession(s, err)
+			return
+		}
 	}
 
 	mgmtServiceAddresses := machine.managementServerAddresses
@@ -363,6 +363,9 @@ func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (
 }
 
 func (cs *consoleServer) checkAuthorizedKeys(machine machine, publicKey ssh.PublicKey) error {
+	if publicKey == nil {
+		return fmt.Errorf("publicKey is nil")
+	}
 	for _, key := range machine.sshPublicKeys {
 		cs.log.Debug("check if public key matches", "machine key", key, "authorized key", publicKey.Type())
 		key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
