@@ -22,14 +22,25 @@ type consoleServer struct {
 	log        *slog.Logger
 	spec       *Specification
 	createdAts *sync.Map
+
+	// newMetal creates the metal adapter for a session. It is a field to allow
+	// test injection of a mock adapter.
+	newMetal func(log *slog.Logger, token, project string, isadmin bool, spec Specification) (metal, error)
+	// connectMachine establishes the connection to the machine's serial console and
+	// returns a cleanup func and the machine-side ssh session. It is a field to allow
+	// test injection.
+	connectMachine func(mgmtServiceAddress, machineID string) (func(), *gossh.Session, error)
 }
 
 func NewServer(log *slog.Logger, spec *Specification) *consoleServer {
-	return &consoleServer{
+	cs := &consoleServer{
 		log:        log,
 		spec:       spec,
 		createdAts: new(sync.Map),
 	}
+	cs.newMetal = newMetal
+	cs.connectMachine = cs.realConnectMachine
+	return cs
 }
 
 // Run starts ssh server and listen for console connections.
@@ -38,11 +49,9 @@ func (cs *consoleServer) Run() error {
 		Addr:    fmt.Sprintf(":%d", cs.spec.Port),
 		Handler: cs.sessionHandler,
 		// does not have access to the token, must be called to be able to store the publicKey in the session
-		// which will be then checked against the stored publickey in the machine by the sessionRequestCallback
+		// which will be then checked against the stored publickey in the machine by sessionHandler
 		PublicKeyHandler: cs.noopPublicKeyHandler,
-		// Used to make validations if this session might be accepted or declined after the publicKeyhandler
-		SessionRequestCallback: cs.sessionRequestCallback,
-		Banner:                 "metal-stack.io console server\n",
+		Banner:           "metal-stack.io console server\n",
 	}
 
 	serverKey, err := os.ReadFile(cs.spec.PrivateKeyFile)
@@ -64,27 +73,13 @@ func (cs *consoleServer) Run() error {
 	return nil
 }
 
-func (cs *consoleServer) sessionRequestCallback(s ssh.Session, requestType string) bool {
-	m := s.Context().Value("machine")
-	machine, ok := m.(*machine)
-	if !ok {
-		cs.log.Error("unable to extract machine from ssh session context")
-		return false
-	}
-	if err := cs.checkAuthorizedKeys(*machine, s.PublicKey()); err != nil {
-		cs.log.Error("public key does not match", "error", err)
-		return false
-	}
-	return true
-}
-
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	var (
 		machineID               = s.User()
 		token, project, isadmin = tokenAndProjectFromSessionEnv(s)
 	)
 
-	metal, err := newMetal(cs.log, token, project, isadmin, *cs.spec)
+	metal, err := cs.newMetal(cs.log, token, project, isadmin, *cs.spec)
 	if err != nil {
 		cs.log.Error("error constructing metal adapter", "error", err)
 		cs.exitSession(s, err)
@@ -97,7 +92,14 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		cs.exitSession(s, err)
 		return
 	}
-	s.Context().SetValue("machine", machine)
+
+	if s.PublicKey() != nil {
+		if err := cs.checkAuthorizedKeys(*machine, s.PublicKey()); err != nil {
+			cs.log.Error("public key does not match", "error", err)
+			cs.exitSession(s, err)
+			return
+		}
+	}
 
 	cs.createdAts.Store(machineID, machine.createdAt.String())
 	defer cs.createdAts.Delete(machineID)
@@ -141,23 +143,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	// TODO try all available addresses round robin
 	mgmtServiceAddress := mgmtServiceAddresses[0]
 
-	tcpConn, err := cs.connectToManagementNetwork(mgmtServiceAddress)
+	cleanup, sshSession, err := cs.connectMachine(mgmtServiceAddress, machineID)
 	if err != nil {
-		cs.log.Error("failed to connect to management network", "error", err)
+		cs.log.Error("failed to connect to machine console", "error", err)
 		return
 	}
-
-	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
-	if err != nil {
-		cs.log.Error("failed to establish SSH connection via already established TCP connection", "error", err)
-		return
-	}
-	defer func() {
-		_ = tcpConn.Close()
-		_ = sshSession.Close()
-		_ = sshClient.Close()
-		_ = sshConn.Close()
-	}()
+	defer cleanup()
 
 	cs.requestPTY(sshSession)
 
@@ -282,6 +273,27 @@ func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
 	}
 }
 
+func (cs *consoleServer) realConnectMachine(mgmtServiceAddress, machineID string) (func(), *gossh.Session, error) {
+	tcpConn, err := cs.connectToManagementNetwork(mgmtServiceAddress)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
+	if err != nil {
+		_ = tcpConn.Close()
+		return nil, nil, err
+	}
+
+	cleanup := func() {
+		_ = tcpConn.Close()
+		_ = sshSession.Close()
+		_ = sshClient.Close()
+		_ = sshConn.Close()
+	}
+	return cleanup, sshSession, nil
+}
+
 func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session, error) {
 	bb, err := os.ReadFile(cs.spec.PublicKeyFile)
 	if err != nil {
@@ -369,7 +381,7 @@ func (cs *consoleServer) noopPublicKeyHandler(ctx ssh.Context, publicKey ssh.Pub
 	// This publicKeyHandler is only called to ensure the publicKey is stored in the ssh.Session.
 	// without a publicKeyHandler it is not stored in the session
 	machineID := ctx.User()
-	cs.log.Info("evaluating machine console access with public key access", "machineID", machineID, "publicKey", publicKey)
+	cs.log.Info("evaluating machine console access with public key access", "machineID", machineID)
 	return nil
 }
 
