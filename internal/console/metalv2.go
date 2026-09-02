@@ -27,7 +27,6 @@ func newV2(log *slog.Logger, baseUrl, token, project string, isadmin bool) (meta
 	client, err := client.New(&client.DialConfig{
 		BaseURL: baseUrl,
 		Token:   token,
-		Log:     log,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metal-apiserver client: %w", err)

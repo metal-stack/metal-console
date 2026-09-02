@@ -58,9 +58,9 @@ func TestTokenAndProjectFromSessionEnv(t *testing.T) {
 			wantToken: "xyz",
 		},
 		{
-			name:      "only project",
-			env:       []string{"LC_METAL_STACK_PROJECT=p-2"},
-			wantProj:  "p-2",
+			name:     "only project",
+			env:      []string{"LC_METAL_STACK_PROJECT=p-2"},
+			wantProj: "p-2",
 		},
 		{
 			name: "empty env",
