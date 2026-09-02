@@ -21,7 +21,6 @@ import (
 type consoleServer struct {
 	log        *slog.Logger
 	spec       *Specification
-	metal      metal
 	createdAts *sync.Map
 }
 
@@ -94,9 +93,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		cs.exitSession(s, err)
 		return
 	}
-	cs.metal = metal
 
-	// we must use adminv2 because otherwise project must be passed which is not known here
 	machine, err := metal.getMachine(s.Context(), machineID)
 	if err != nil {
 		cs.log.Error("failed to fetch machine", "error", err)
@@ -173,7 +170,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	if !isAdmin {
 		// check periodically if the session is still allowed.
 		// admins don't need to be disconnected from machines
-		go cs.terminateIfPublicKeysChanged(s)
+		go cs.terminateIfPublicKeysChanged(s, metal)
 	}
 
 	err = sshSession.Start("bash")
@@ -186,7 +183,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	<-done
 }
 
-func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
+func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session, metal metal) {
 	machineID := s.User()
 	createdAt, ok := cs.createdAts.Load(machineID)
 	if !ok {
@@ -207,7 +204,7 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session) {
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
 			// we must use adminv2 because otherwise project must be passed which is not known here
-			m, err := cs.metal.getMachine(s.Context(), machineID)
+			m, err := metal.getMachine(s.Context(), machineID)
 			if err != nil {
 				cs.log.Error("unable to load machine", "machineID", machineID, "error", err)
 				continue
