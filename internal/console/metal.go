@@ -56,12 +56,13 @@ func newMetal(log *slog.Logger, token, project string, isadmin bool, spec Specif
 func isV2TokenType(log *slog.Logger, token string) (bool, error) {
 	claims := &jwt.MapClaims{}
 	parser := jwt.NewParser()
+	// using parseUnverified because result is not used for authorization only for inspection
 	_, _, err := parser.ParseUnverified(token, claims)
 	if err != nil {
 		return false, err
 	}
 
-	log.Info("isV2Token", "token", claims)
+	log.Debug("isV2Token", "token", claims)
 
 	// APIv2 Token must contain either:
 	//  "type": "TOKEN_TYPE_API"

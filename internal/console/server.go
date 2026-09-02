@@ -322,13 +322,13 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
-	clientCert, err := tls.LoadX509KeyPair("/certs/client.pem", "/certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair(cs.spec.BMCCertFile, cs.spec.BMCKeyFile)
 	if err != nil {
 		cs.log.Error("failed to load client certificate", "cert", "/certs/client.pem", "key", "/certs/client-key.pem", "error", err)
 		return nil, err
 	}
 
-	caCert, err := os.ReadFile("/certs/ca.pem")
+	caCert, err := os.ReadFile(cs.spec.BMCCACertFile)
 	if err != nil {
 		cs.log.Error("failed to load CA certificate", "cert", "/certs/ca.pem", "error", err)
 		return nil, err
