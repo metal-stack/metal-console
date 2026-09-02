@@ -100,6 +100,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	s.Context().SetValue("machine", machine)
 
 	cs.createdAts.Store(machineID, machine.createdAt.String())
+	defer cs.createdAts.Delete(machineID)
 
 	var (
 		role    = machine.role
