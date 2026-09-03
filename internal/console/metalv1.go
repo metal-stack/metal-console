@@ -67,26 +67,17 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 	}, nil
 }
 
-func (m *metalv1) checkIsAuthenticated(ctx context.Context) (*consoleUser, error) {
+func (m *metalv1) checkIsAuthenticated(ctx context.Context) (bool, error) {
 
 	user, err := m.client.User().GetMe(user.NewGetMeParams().WithContext(ctx), nil)
 	if err != nil {
 		m.log.Error("failed to fetch user details from oidc token", "error", err, "token", m.token)
-		return nil, fmt.Errorf("given oidc token is invalid")
+		return false, fmt.Errorf("given oidc token is invalid")
 	}
 
-	return &consoleUser{groups: user.Payload.Groups}, nil
-}
-
-func (m *metalv1) checkIsAdmin(ctx context.Context) error {
-	user, err := m.checkIsAuthenticated(ctx)
-	if err != nil {
-		return err
+	if slices.Contains(user.Payload.Groups, m.adminGroupName) {
+		return true, nil
 	}
 
-	if !slices.Contains(user.groups, m.adminGroupName) {
-		return fmt.Errorf("you are not member of required admin group:%s to access this machine console", m.adminGroupName)
-	}
-
-	return nil
+	return false, nil
 }

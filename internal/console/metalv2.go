@@ -70,25 +70,16 @@ func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, e
 	}, nil
 }
 
-func (m *metalv2) checkIsAuthenticated(ctx context.Context) (*consoleUser, error) {
+func (m *metalv2) checkIsAuthenticated(ctx context.Context) (bool, error) {
 	resp, err := m.client.Apiv2().Method().TokenScopedList(ctx, &apiv2.MethodServiceTokenScopedListRequest{})
 	if err != nil {
 		m.log.Error("failed to fetch user details from oidc token", "error", err)
-		return nil, err
+		return false, err
 	}
 
-	return &consoleUser{adminRole: resp.AdminRole}, nil
-}
-
-func (m *metalv2) checkIsAdmin(ctx context.Context) error {
-	user, err := m.checkIsAuthenticated(ctx)
-	if err != nil {
-		return err
+	if pointer.SafeDeref(resp.AdminRole) == apiv2.AdminRole_ADMIN_ROLE_EDITOR {
+		return true, nil
 	}
-	m.log.Info("checkIsAdminV2", "token scoped list", user)
 
-	if pointer.SafeDeref(user.adminRole) != apiv2.AdminRole_ADMIN_ROLE_EDITOR {
-		return fmt.Errorf("invalid token role: %s", user.adminRole)
-	}
-	return nil
+	return false, nil
 }

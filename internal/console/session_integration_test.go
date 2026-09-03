@@ -44,12 +44,8 @@ func (m *mockMetal) getMachine(_ context.Context, machineID string) (*machine, e
 	}, nil
 }
 
-func (m *mockMetal) checkIsAuthenticated(context.Context) (*consoleUser, error) {
-	return &consoleUser{}, nil
-}
-
-func (m *mockMetal) checkIsAdmin(context.Context) error {
-	return nil
+func (m *mockMetal) checkIsAuthenticated(context.Context) (bool, error) {
+	return false, nil
 }
 
 // startMachineSSHServer runs a minimal ssh server that stands in for the

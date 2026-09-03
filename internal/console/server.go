@@ -93,36 +93,11 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	cs.createdAts.Store(machineID, machine.createdAt.String())
-	defer cs.createdAts.Delete(machineID)
-
-	var (
-		role    = machine.role
-		isAdmin = false
-	)
-
-	if role != apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_MACHINE || s.PublicKey() == nil {
-		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
-		// check if the ssh session contains the oidc token and the user is member of admin group
-		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
-		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-		if err := metal.checkIsAdmin(s.Context()); err != nil {
-			cs.log.Error("prevented admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
-			cs.exitSession(s, err)
-			return
-		}
-
-		isAdmin = true
-
-		cs.log.Info("allowed admin access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
-	} else {
-		if _, err := metal.checkIsAuthenticated(s.Context()); err != nil {
-			cs.log.Error("prevented user access to a machine console", "machineID", machineID, "role", role, "from", s.RemoteAddr(), "error", err)
-			cs.exitSession(s, err)
-			return
-		}
-
-		cs.log.Info("allowed user access to a machine", "machineID", machineID, "role", role, "from", s.RemoteAddr())
+	isAdmin, err := metal.checkIsAuthenticated(s.Context())
+	if err != nil {
+		cs.log.Error("check for authentication failed", "error", err)
+		cs.exitSession(s, err)
+		return
 	}
 
 	if !isAdmin {
@@ -131,6 +106,23 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			cs.exitSession(s, err)
 			return
 		}
+	}
+
+	cs.createdAts.Store(machineID, machine.createdAt.String())
+	defer cs.createdAts.Delete(machineID)
+
+	var (
+		role = machine.role
+	)
+
+	if !isAdmin && role == apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_FIREWALL {
+		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
+		// check if the ssh session contains the oidc token and the user is member of admin group
+		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
+		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
+		cs.log.Error("prevented non admin access to a firewall console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
+		cs.exitSession(s, fmt.Errorf("only admins can access firewall console"))
+		return
 	}
 
 	mgmtServiceAddresses := machine.managementServerAddresses
@@ -380,6 +372,7 @@ func (cs *consoleServer) checkAuthorizedKeys(machine machine, publicKey ssh.Publ
 	}
 	return fmt.Errorf("no matching authorized key found for machineID:%s", machine.id)
 }
+
 func (cs *consoleServer) noopPublicKeyHandler(ctx ssh.Context, publicKey ssh.PublicKey) error {
 	// This publicKeyHandler is only called to ensure the publicKey is stored in the ssh.Session.
 	// without a publicKeyHandler it is not stored in the session
