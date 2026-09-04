@@ -138,7 +138,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	}
 	defer cleanup()
 
-	cs.requestPTY(sshSession)
+	resize := cs.requestPTY(s, sshSession)
 
 	wait := cs.redirectIO(s, sshSession)
 
@@ -151,6 +151,21 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	if err := sshSession.Start("bash"); err != nil {
 		cs.log.Error("failed to start bash via SSH session", "error", err)
 		return
+	}
+
+	// forward terminal window-size changes from the caller to the machine console
+	if resize != nil {
+		go func() {
+			for w := range resize {
+				if w.Width == 0 || w.Height == 0 {
+					continue
+				}
+				if err := sshSession.WindowChange(w.Height, w.Width); err != nil {
+					cs.log.Debug("failed to forward window size change", "error", err)
+					return
+				}
+			}
+		}()
 	}
 
 	// wait till all io is done
@@ -248,16 +263,26 @@ func (cs *consoleServer) redirectIO(callerSSHSession ssh.Session, machineSSHSess
 	return wg.Wait
 }
 
-func (cs *consoleServer) requestPTY(sshSession *gossh.Session) {
+func (cs *consoleServer) requestPTY(callerSSHSession ssh.Session, machineSSHSession *gossh.Session) <-chan ssh.Window {
+	// use the caller's terminal geometry if a pty was requested, else a sensible default
+	pty, resize, ok := callerSSHSession.Pty()
+	win := ssh.Window{Width: 80, Height: 40}
+	if !ok {
+		resize = nil
+	} else if pty.Window.Width > 0 && pty.Window.Height > 0 {
+		win = pty.Window
+	}
+
 	modes := gossh.TerminalModes{
 		gossh.ECHO:          0,      // disable echoing
 		gossh.TTY_OP_ISPEED: 115200, // input speed in baud
 		gossh.TTY_OP_OSPEED: 115200, // output speed in baud
 	}
 
-	if err := sshSession.RequestPty("xterm", 80, 40, modes); err != nil {
+	if err := machineSSHSession.RequestPty("xterm", win.Height, win.Width, modes); err != nil {
 		cs.log.Error("failed to request PTY", "error", err)
 	}
+	return resize
 }
 
 func (cs *consoleServer) realConnectMachine(mgmtServiceAddress, machineID string) (func(), *gossh.Session, error) {
