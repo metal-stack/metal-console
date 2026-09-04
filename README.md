@@ -16,6 +16,24 @@ If the machine uuid is a valid machine, it will then use the provided private ke
 
 `metal-console` figures out in which partition the machine is located and then opens a tls socket connection to `metal-bmc` running on the management server in this partition. `metal-bmc` checks if the tls client certificate matches. If this is the case, it looks up the machine ipmi details from `metal-api` and starts a ipmi sol session to the machine.
 
+## Configuration
+
+The `metal-console` can be configured through environment variables.
+Every configuration needs to be prefixed with `METAL_CONSOLE_`.
+
+All configuration options can be found in the implementation [internal/console/spec.go](./internal/console/spec.go).
+
+## Possible access patterns
+
+| machine state      | who wants access | allowed | how is access granted                                                                                                       |
+|--------------------|------------------|---------|-----------------------------------------------------------------------------------------------------------------------------|
+| waiting machine    | end user         | no      | only admins can connect to waiting machines                                                                                 |
+| waiting machine    | admin editor     | yes     | provided token is checked if it contains admin editor rights                                                                |
+| allocated machine  | end user         | yes     | allowed if token rights allow fetching this machine and provided ssh keys match publickeys stored in the machine allocation |
+| allocated machine  | admin editor     | yes     | provided token is checked if it contains admin editor rights                                                                |
+| allocated firewall | end user         | no      | denied because only admins are allowed to connect to firewall                                                               |
+| allocated firewall | admin editor     | yes     | provided token is checked if it contains admin editor rights                                                                |
+
 ## TODO
 
 - If a second console access starts to same machine, kill existing one
