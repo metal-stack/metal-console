@@ -55,14 +55,18 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 			role = apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_FIREWALL
 		}
 	}
+	if resp.Payload == nil {
+		return nil, fmt.Errorf("machine is nil")
+	}
+	ms := resp.Payload
 
 	return &machine{
-		id:                        *resp.Payload.ID,
+		id:                        pointer.SafeDeref(ms.ID),
 		role:                      role,
-		allocated:                 resp.Payload.Allocation != nil,
-		managementServerAddresses: []string{resp.Payload.Partition.Mgmtserviceaddress},
-		sshPublicKeys:             pointer.SafeDeref(resp.Payload.Allocation).SSHPubKeys,
-		createdAt:                 time.Time(pointer.SafeDeref(pointer.SafeDeref(resp.Payload.Allocation).Created)),
+		allocated:                 ms.Allocation != nil,
+		managementServerAddresses: []string{pointer.SafeDeref(ms.Partition).Mgmtserviceaddress},
+		sshPublicKeys:             pointer.SafeDeref(ms.Allocation).SSHPubKeys,
+		createdAt:                 time.Time(pointer.SafeDeref(pointer.SafeDeref(ms.Allocation).Created)),
 	}, nil
 }
 
