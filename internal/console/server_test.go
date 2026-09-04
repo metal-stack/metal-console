@@ -38,19 +38,16 @@ func TestTokenAndProjectFromSessionEnv(t *testing.T) {
 		env       []string
 		wantToken string
 		wantProj  string
-		wantAdmin bool
 	}{
 		{
 			name: "all values set",
 			env: []string{
 				"LC_METAL_STACK_OIDC_TOKEN=abc123",
 				"LC_METAL_STACK_PROJECT=proj-1",
-				"LC_METAL_STACK_ISADMIN=true",
 				"PATH=/usr/bin",
 			},
 			wantToken: "abc123",
 			wantProj:  "proj-1",
-			wantAdmin: true,
 		},
 		{
 			name:      "only token",
@@ -71,10 +68,9 @@ func TestTokenAndProjectFromSessionEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &mockSession{env: tt.env}
-			token, project, isAdmin := tokenAndProjectFromSessionEnv(s)
+			token, project := tokenAndProjectFromSessionEnv(s)
 			require.Equal(t, tt.wantToken, token)
 			require.Equal(t, tt.wantProj, project)
-			require.Equal(t, tt.wantAdmin, isAdmin)
 		})
 	}
 }

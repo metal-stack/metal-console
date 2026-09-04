@@ -25,7 +25,7 @@ type consoleServer struct {
 
 	// newMetal creates the metal adapter for a session. It is a field to allow
 	// test injection of a mock adapter.
-	newMetal func(log *slog.Logger, token, project string, isadmin bool, spec Specification) (metal, error)
+	newMetal func(log *slog.Logger, token, project string, spec Specification) (metal, error)
 	// connectMachine establishes the connection to the machine's serial console and
 	// returns a cleanup func and the machine-side ssh session. It is a field to allow
 	// test injection.
@@ -75,20 +75,13 @@ func (cs *consoleServer) Run() error {
 
 func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	var (
-		machineID               = s.User()
-		token, project, isadmin = tokenAndProjectFromSessionEnv(s)
+		machineID      = s.User()
+		token, project = tokenAndProjectFromSessionEnv(s)
 	)
 
-	metal, err := cs.newMetal(cs.log, token, project, isadmin, *cs.spec)
+	metal, err := cs.newMetal(cs.log, token, project, *cs.spec)
 	if err != nil {
 		cs.log.Error("error constructing metal adapter", "error", err)
-		cs.exitSession(s, err)
-		return
-	}
-
-	machine, err := metal.getMachine(s.Context(), machineID)
-	if err != nil {
-		cs.log.Error("failed to fetch machine", "error", err)
 		cs.exitSession(s, err)
 		return
 	}
@@ -96,6 +89,13 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	isAdmin, err := metal.checkIsAuthenticated(s.Context())
 	if err != nil {
 		cs.log.Error("check for authentication failed", "error", err)
+		cs.exitSession(s, err)
+		return
+	}
+
+	machine, err := metal.getMachine(s.Context(), machineID)
+	if err != nil {
+		cs.log.Error("failed to fetch machine", "error", err)
 		cs.exitSession(s, err)
 		return
 	}
@@ -111,16 +111,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 	cs.createdAts.Store(machineID, machine.createdAt.String())
 	defer cs.createdAts.Delete(machineID)
 
-	var (
-		role = machine.role
-	)
-
-	if !isAdmin && role == apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_FIREWALL {
+	if !isAdmin && machine.role == apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_FIREWALL {
 		// If the machine is a not a regular machine, i.e. a firewall, or an admin wants access to an arbitrary machine
 		// check if the ssh session contains the oidc token and the user is member of admin group
 		// ssh client can pass environment variables, but only environment variables starting with LC_ are passed
 		// OIDC token must be stored in LC_METAL_STACK_OIDC_TOKEN
-		cs.log.Error("prevented non admin access to a firewall console", "machineID", machineID, "role", role, "from", s.RemoteAddr())
+		cs.log.Error("prevented non admin access to a firewall console", "machineID", machineID, "role", machine.role, "from", s.RemoteAddr())
 		cs.exitSession(s, fmt.Errorf("only admins can access firewall console"))
 		return
 	}
@@ -152,8 +148,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		go cs.terminateIfPublicKeysChanged(s, metal)
 	}
 
-	err = sshSession.Start("bash")
-	if err != nil {
+	if err := sshSession.Start("bash"); err != nil {
 		cs.log.Error("failed to start bash via SSH session", "error", err)
 		return
 	}
@@ -381,11 +376,10 @@ func (cs *consoleServer) noopPublicKeyHandler(ctx ssh.Context, publicKey ssh.Pub
 	return nil
 }
 
-func tokenAndProjectFromSessionEnv(s ssh.Session) (string, string, bool) {
+func tokenAndProjectFromSessionEnv(s ssh.Session) (string, string) {
 	var (
 		token   string
 		project string
-		isadmin bool
 	)
 	for _, env := range s.Environ() {
 		_, t, tfound := strings.Cut(env, oidcTokenEnv+"=")
@@ -396,11 +390,7 @@ func tokenAndProjectFromSessionEnv(s ssh.Session) (string, string, bool) {
 		if pfound {
 			project = p
 		}
-		_, _, afound := strings.Cut(env, isAdminEnv+"=")
-		if afound {
-			isadmin = true
-		}
 	}
 
-	return token, project, isadmin
+	return token, project
 }

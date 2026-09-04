@@ -15,8 +15,6 @@ const (
 	oidcTokenEnv = "LC_METAL_STACK_OIDC_TOKEN"
 	// projectEnv environment variable passed through ssh to forward the metal project
 	projectEnv = "LC_METAL_STACK_PROJECT"
-	// isAdminEnv environment variable passed through ssh to define this as admin access
-	isAdminEnv = "LC_METAL_STACK_ISADMIN"
 )
 
 type (
@@ -36,16 +34,16 @@ type metal interface {
 	checkIsAuthenticated(context.Context) (bool, error)
 }
 
-func newMetal(log *slog.Logger, token, project string, isadmin bool, spec Specification) (metal, error) {
+func newMetal(log *slog.Logger, token, project string, spec Specification) (metal, error) {
 	isV2Token, err := isV2TokenType(log, token)
 	if err != nil {
 		return nil, err
 	}
 
 	if isV2Token {
-		return newV2(log, spec.MetalAPIServerURL, token, project, isadmin)
+		return newV2(log, spec.MetalAPIServerURL, token, project)
 	} else {
-		return newV1(log, spec.MetalAPIURL, token, spec.AdminGroupName, isadmin)
+		return newV1(log, spec.MetalAPIURL, token, spec.AdminGroupName)
 	}
 }
 

@@ -23,7 +23,7 @@ type metalv1 struct {
 	isadmin        bool
 }
 
-func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string, isadmin bool) (metal, error) {
+func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string) (metal, error) {
 	if token == "" {
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
 	}
@@ -37,7 +37,6 @@ func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string, isadmi
 		client:         metal,
 		token:          token,
 		adminGroupName: adminGroupName,
-		isadmin:        isadmin,
 	}, nil
 }
 
@@ -76,6 +75,7 @@ func (m *metalv1) checkIsAuthenticated(ctx context.Context) (bool, error) {
 	}
 
 	if slices.Contains(user.Payload.Groups, m.adminGroupName) {
+		m.isadmin = true
 		return true, nil
 	}
 

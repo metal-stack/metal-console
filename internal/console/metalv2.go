@@ -19,7 +19,7 @@ type metalv2 struct {
 	isadmin bool
 }
 
-func newV2(log *slog.Logger, baseUrl, token, project string, isadmin bool) (metal, error) {
+func newV2(log *slog.Logger, baseUrl, token, project string) (metal, error) {
 	if token == "" {
 		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
 	}
@@ -36,7 +36,6 @@ func newV2(log *slog.Logger, baseUrl, token, project string, isadmin bool) (meta
 		client:  client,
 		token:   token,
 		project: project,
-		isadmin: isadmin,
 	}, nil
 }
 
@@ -78,6 +77,7 @@ func (m *metalv2) checkIsAuthenticated(ctx context.Context) (bool, error) {
 	}
 
 	if pointer.SafeDeref(resp.AdminRole) == apiv2.AdminRole_ADMIN_ROLE_EDITOR {
+		m.isadmin = true
 		return true, nil
 	}
 

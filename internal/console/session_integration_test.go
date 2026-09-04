@@ -25,7 +25,6 @@ import (
 type mockMetal struct {
 	token   string
 	project string
-	isadmin bool
 
 	machineID atomic.Value // string
 	calls     atomic.Int32
@@ -146,10 +145,9 @@ func TestSSHSessionWithPrivateKeyAndTokenEnv(t *testing.T) {
 	cs := NewServer(logger, &Specification{})
 
 	mock := &mockMetal{}
-	cs.newMetal = func(_ *slog.Logger, token, project string, isadmin bool, _ Specification) (metal, error) {
+	cs.newMetal = func(_ *slog.Logger, token, project string, _ Specification) (metal, error) {
 		mock.token = token
 		mock.project = project
-		mock.isadmin = isadmin
 		return mock, nil
 	}
 
