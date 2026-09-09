@@ -46,7 +46,7 @@ func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, e
 			Uuid: machineID,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch requested machine %s %w", machineID, err)
+			return nil, fmt.Errorf("failed to fetch requested machine: %s %w", machineID, err)
 		}
 		ms = resp.Machine
 	} else {
@@ -55,7 +55,7 @@ func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, e
 			Project: m.project,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch requested machine %s %w", machineID, err)
+			return nil, fmt.Errorf("failed to fetch requested machine: %s %w", machineID, err)
 		}
 		ms = resp.Machine
 	}

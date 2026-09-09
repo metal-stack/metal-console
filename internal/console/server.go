@@ -192,10 +192,10 @@ func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session, metal metal
 			return
 		case <-ticker.C:
 			cs.log.Info("checking if machine is still owned by the same user", "machineID", machineID)
-			// we must use adminv2 because otherwise project must be passed which is not known here
 			m, err := metal.getMachine(s.Context(), machineID)
 			if err != nil {
 				cs.log.Error("unable to load machine", "machineID", machineID, "error", err)
+				cs.exitSession(s, fmt.Errorf("unable to load machine, terminating ssh session"))
 				continue
 			}
 			if !m.allocated {
@@ -293,7 +293,10 @@ func (cs *consoleServer) realConnectMachine(mgmtServiceAddress, machineID string
 
 	sshConn, sshClient, sshSession, err := cs.connectSSH(tcpConn, mgmtServiceAddress, machineID)
 	if err != nil {
-		_ = tcpConn.Close()
+		if err := tcpConn.Close(); err != nil {
+			cs.log.Error("unable to close tcp connection", "error", err)
+		}
+
 		return nil, nil, err
 	}
 

@@ -43,7 +43,7 @@ func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string) (metal
 func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, error) {
 	resp, err := m.client.Machine().FindMachine(metalmachine.NewFindMachineParams().WithID(machineID).WithContext(ctx), nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch requested machine %s %w", machineID, err)
+		return nil, fmt.Errorf("failed to fetch requested machine: %s %w", machineID, err)
 	}
 
 	var role apiv2.MachineAllocationType
