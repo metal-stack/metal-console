@@ -30,27 +30,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	apiv2client, err := apiclient.New(&apiclient.DialConfig{
-		BaseURL:   spec.MetalAPIServerURL,
-		TokenFile: spec.TokenFile,
-		Log:       log,
-	})
-	if err != nil {
-		log.Error("failed to create metal-apiserver v2 client", "error", err)
-		os.Exit(1)
-	}
+	if spec.MetalAPIServerURL != "" {
+		apiv2client, err := apiclient.New(&apiclient.DialConfig{
+			BaseURL:   spec.MetalAPIServerURL,
+			TokenFile: spec.TokenFile,
+			Log:       log,
+		})
+		if err != nil {
+			log.Error("failed to create metal-apiserver v2 client", "error", err)
+			os.Exit(1)
+		}
 
-	// Ping apiserver every 5min
-	apiv2client.Ping(context.Background(), &apiclient.PingConfig{
-		ComponentType: apiv2.ComponentType_COMPONENT_TYPE_METAL_CONSOLE,
-		StartedAt:     time.Now(),
-		Version: apiv2.Version{
-			Version:   v.Version,
-			Revision:  v.Revision,
-			GitSha1:   v.GitSHA1,
-			BuildDate: v.BuildDate,
-		},
-	})
+		// Ping apiserver every 5min
+		apiv2client.Ping(context.Background(), &apiclient.PingConfig{
+			ComponentType: apiv2.ComponentType_COMPONENT_TYPE_METAL_CONSOLE,
+			StartedAt:     time.Now(),
+			Version: apiv2.Version{
+				Version:   v.Version,
+				Revision:  v.Revision,
+				GitSha1:   v.GitSHA1,
+				BuildDate: v.BuildDate,
+			},
+		})
+	}
 
 	log.Info("metal-console", "version", v.V.String(), "port", spec.Port, "metal-apiserver", spec.MetalAPIServerURL)
 	if err := console.NewServer(log, spec).Run(); err != nil {
