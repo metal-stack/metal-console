@@ -11,6 +11,7 @@ import (
 	"time"
 
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
+	"github.com/metal-stack/metal-console/api"
 	ssh "github.com/tailscale/gliderssh"
 
 	gossh "golang.org/x/crypto/ssh"
@@ -370,11 +371,11 @@ func tokenAndProjectFromSessionEnv(s ssh.Session) (string, string) {
 		project string
 	)
 	for _, env := range s.Environ() {
-		_, t, tfound := strings.Cut(env, oidcTokenEnv+"=")
+		_, t, tfound := strings.Cut(env, api.OidcTokenEnv+"=")
 		if tfound {
 			token = t
 		}
-		_, p, pfound := strings.Cut(env, projectEnv+"=")
+		_, p, pfound := strings.Cut(env, api.ProjectEnv+"=")
 		if pfound {
 			project = p
 		}

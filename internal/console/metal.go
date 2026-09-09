@@ -10,13 +10,6 @@ import (
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
 )
 
-const (
-	// oidcTokenEnv environment variable passed through ssh to forward the token
-	oidcTokenEnv = "LC_METAL_STACK_OIDC_TOKEN"
-	// projectEnv environment variable passed through ssh to forward the metal project
-	projectEnv = "LC_METAL_STACK_PROJECT"
-)
-
 type (
 	machine struct {
 		id                        string

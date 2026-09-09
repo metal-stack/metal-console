@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
+	"github.com/metal-stack/metal-console/api"
 	metalgo "github.com/metal-stack/metal-go"
 	metalmachine "github.com/metal-stack/metal-go/api/client/machine"
 	"github.com/metal-stack/metal-go/api/client/user"
@@ -25,7 +26,7 @@ type metalv1 struct {
 
 func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string) (metal, error) {
 	if token == "" {
-		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", api.OidcTokenEnv)
 	}
 
 	metal, err := metalgo.NewDriver(metalapiv1Url, token, "")

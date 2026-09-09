@@ -8,6 +8,7 @@ import (
 	"github.com/metal-stack/api/go/client"
 	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
 	apiv2 "github.com/metal-stack/api/go/metalstack/api/v2"
+	"github.com/metal-stack/metal-console/api"
 	"github.com/metal-stack/metal-lib/pkg/pointer"
 )
 
@@ -21,7 +22,7 @@ type metalv2 struct {
 
 func newV2(log *slog.Logger, baseUrl, token, project string) (metal, error) {
 	if token == "" {
-		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", oidcTokenEnv)
+		return nil, fmt.Errorf("unable to find OIDC token stored in %s env variable which is required for machine console access", api.OidcTokenEnv)
 	}
 
 	client, err := client.New(&client.DialConfig{
