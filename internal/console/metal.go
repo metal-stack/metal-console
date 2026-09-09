@@ -49,7 +49,7 @@ func isV2TokenType(log *slog.Logger, token string) (bool, error) {
 		return false, err
 	}
 
-	log.Debug("isV2Token", "token", claims)
+	log.Debug("evaluating if token is v2 type", "token", claims)
 
 	// APIv2 Token must contain either:
 	//  "type": "TOKEN_TYPE_API"
