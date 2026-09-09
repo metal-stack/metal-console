@@ -18,6 +18,7 @@ type (
 		managementServerAddresses []string
 		sshPublicKeys             []string
 		createdAt                 time.Time
+		isProvisioned             bool
 	}
 )
 

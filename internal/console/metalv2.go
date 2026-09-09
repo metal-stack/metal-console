@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/metal-stack/api/go/client"
 	adminv2 "github.com/metal-stack/api/go/metalstack/admin/v2"
@@ -32,6 +33,7 @@ func newV2(log *slog.Logger, baseUrl, token, project string) (metal, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metal-apiserver client: %w", err)
 	}
+
 	return &metalv2{
 		log:     log,
 		client:  client,
@@ -42,6 +44,7 @@ func newV2(log *slog.Logger, baseUrl, token, project string) (metal, error) {
 
 func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, error) {
 	var ms *apiv2.Machine
+
 	if m.project == "" || m.isadmin {
 		resp, err := m.client.Adminv2().Machine().Get(ctx, &adminv2.MachineServiceGetRequest{
 			Uuid: machineID,
@@ -60,13 +63,33 @@ func (m *metalv2) getMachine(ctx context.Context, machineID string) (*machine, e
 		}
 		ms = resp.Machine
 	}
+
+	var (
+		createdAt     = pointer.SafeDeref(pointer.SafeDeref(ms.Allocation).Meta).CreatedAt.AsTime()
+		isProvisioned = false
+	)
+
+	if ms.RecentProvisioningEvents != nil {
+		events := slices.DeleteFunc(ms.RecentProvisioningEvents.Events, func(provisioningEvent *apiv2.MachineProvisioningEvent) bool {
+			return provisioningEvent.Time.AsTime().Before(createdAt)
+		})
+
+		for _, event := range events {
+			if event.Event == apiv2.MachineProvisioningEventType_MACHINE_PROVISIONING_EVENT_TYPE_PHONED_HOME {
+				isProvisioned = true
+				break
+			}
+		}
+	}
+
 	return &machine{
 		id:                        ms.Uuid,
 		role:                      pointer.SafeDeref(ms.Allocation).AllocationType,
 		allocated:                 ms.Allocation != nil,
 		managementServerAddresses: pointer.SafeDeref(ms.Partition).MgmtServiceAddresses,
 		sshPublicKeys:             pointer.SafeDeref(ms.Allocation).SshPublicKeys,
-		createdAt:                 pointer.SafeDeref(pointer.SafeDeref(ms.Allocation).Meta).CreatedAt.AsTime(),
+		createdAt:                 createdAt,
+		isProvisioned:             isProvisioned,
 	}, nil
 }
 

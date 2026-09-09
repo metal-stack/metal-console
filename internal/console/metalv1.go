@@ -46,8 +46,18 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 		return nil, fmt.Errorf("failed to fetch requested machine: %s %w", machineID, err)
 	}
 
-	var role apiv2.MachineAllocationType
-	if resp.Payload != nil && resp.Payload.Allocation != nil && resp.Payload.Allocation.Role != nil {
+	if resp.Payload == nil {
+		return nil, fmt.Errorf("machine is nil")
+	}
+
+	var (
+		ms            = resp.Payload
+		createdAt     = time.Time(pointer.SafeDeref(pointer.SafeDeref(ms.Allocation).Created))
+		isProvisioned = false
+		role          apiv2.MachineAllocationType
+	)
+
+	if ms.Allocation != nil && ms.Allocation.Role != nil {
 		switch *resp.Payload.Allocation.Role {
 		case models.V1MachineAllocationRoleMachine:
 			role = apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_MACHINE
@@ -55,10 +65,16 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 			role = apiv2.MachineAllocationType_MACHINE_ALLOCATION_TYPE_FIREWALL
 		}
 	}
-	if resp.Payload == nil {
-		return nil, fmt.Errorf("machine is nil")
+
+	events := slices.DeleteFunc(ms.Events.Log, func(l *models.V1MachineProvisioningEvent) bool {
+		return time.Time(l.Time).Before(createdAt)
+	})
+	for _, event := range events {
+		if pointer.SafeDeref(event.Event) == "Phoned Home" {
+			isProvisioned = true
+			break
+		}
 	}
-	ms := resp.Payload
 
 	return &machine{
 		id:                        pointer.SafeDeref(ms.ID),
@@ -66,7 +82,8 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 		allocated:                 ms.Allocation != nil,
 		managementServerAddresses: []string{pointer.SafeDeref(ms.Partition).Mgmtserviceaddress},
 		sshPublicKeys:             pointer.SafeDeref(ms.Allocation).SSHPubKeys,
-		createdAt:                 time.Time(pointer.SafeDeref(pointer.SafeDeref(ms.Allocation).Created)),
+		createdAt:                 createdAt,
+		isProvisioned:             isProvisioned,
 	}, nil
 }
 
