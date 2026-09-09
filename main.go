@@ -20,9 +20,13 @@ func main() {
 	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	log := slog.New(jsonHandler)
 
-	err := envconfig.Process("METAL_CONSOLE", spec)
-	if err != nil {
+	if err := envconfig.Process("METAL_CONSOLE", spec); err != nil {
 		log.Error("failed to read env config", "error", err)
+		os.Exit(1)
+	}
+
+	if err := spec.Parse(); err != nil {
+		log.Error("failed to parse configuration", "error", err)
 		os.Exit(1)
 	}
 

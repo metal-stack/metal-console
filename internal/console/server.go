@@ -2,12 +2,10 @@ package console
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -54,20 +52,10 @@ func (cs *consoleServer) Run() error {
 		Banner:           "metal-stack.io console server\n",
 	}
 
-	serverKey, err := os.ReadFile(cs.spec.PrivateKeyFile)
-	if err != nil {
-		return fmt.Errorf("failed to load private host key:%w", err)
-	}
-
-	hostKey, err := gossh.ParsePrivateKey(serverKey)
-	if err != nil {
-		return fmt.Errorf("failed to load host key %w", err)
-	}
-	s.AddHostKey(hostKey)
+	s.AddHostKey(cs.spec.privateKey)
 
 	cs.log.Info("starting ssh server", "port", cs.spec.Port)
-	err = s.ListenAndServe()
-	if err != nil {
+	if err := s.ListenAndServe(); err != nil {
 		return fmt.Errorf("unable to start listener %w", err)
 	}
 	return nil
@@ -310,19 +298,9 @@ func (cs *consoleServer) realConnectMachine(mgmtServiceAddress, machineID string
 }
 
 func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machineID string) (gossh.Conn, *gossh.Client, *gossh.Session, error) {
-	bb, err := os.ReadFile(cs.spec.PublicKeyFile)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to load public host key:%w", err)
-	}
-	pubHostKey, _, _, _, err := ssh.ParseAuthorizedKey(bb)
-	if err != nil {
-		cs.log.Error("failed to load public host key", "error", err)
-		return nil, nil, nil, err
-	}
-
 	sshConfig := &gossh.ClientConfig{
 		User:            machineID,
-		HostKeyCallback: gossh.FixedHostKey(pubHostKey),
+		HostKeyCallback: gossh.FixedHostKey(cs.spec.publicKey),
 	}
 
 	sshConn, chans, reqs, err := gossh.NewClientConn(tcpConn, mgmtServiceAddress, sshConfig)
@@ -343,27 +321,9 @@ func (cs *consoleServer) connectSSH(tcpConn *tls.Conn, mgmtServiceAddress, machi
 }
 
 func (cs *consoleServer) connectToManagementNetwork(mgmtServiceAddress string) (*tls.Conn, error) {
-	clientCert, err := tls.LoadX509KeyPair(cs.spec.BMCCertFile, cs.spec.BMCKeyFile)
-	if err != nil {
-		cs.log.Error("failed to load client certificate", "cert", cs.spec.BMCCertFile, "key", cs.spec.BMCKeyFile, "error", err)
-		return nil, err
-	}
-
-	caCert, err := os.ReadFile(cs.spec.BMCCACertFile)
-	if err != nil {
-		cs.log.Error("failed to load CA certificate", "cert", cs.spec.BMCCACertFile, "error", err)
-		return nil, err
-	}
-	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(caCert)
-	if !ok {
-		cs.log.Error("failed to append CA certificate")
-		return nil, errors.New("bad ca certificate")
-	}
-
 	tlsConfig := &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      cs.spec.caCertPool,
+		Certificates: []tls.Certificate{cs.spec.clientCert},
 		MinVersion:   tls.VersionTLS12,
 	}
 
