@@ -159,6 +159,8 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 
 	// wait till all io is done
 	wait()
+
+	cs.log.Info("session terminated, redirection stopped", "machineID", machineID)
 }
 
 func (cs *consoleServer) terminateIfPublicKeysChanged(s ssh.Session, metal metal) {
