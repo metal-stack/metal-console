@@ -23,8 +23,8 @@ type (
 
 type metal interface {
 	getMachine(ctx context.Context, machineID string) (*machine, error)
-	// checkIsAuthenticated returns true if the user is admin, an error is returned of authentication failed
-	checkIsAuthenticated(context.Context) (bool, error)
+	// checkIsAdmin returns true if the user is admin, an error is returned if authentication failed
+	checkIsAdmin(context.Context) (bool, error)
 }
 
 func newMetal(log *slog.Logger, token, project string, spec Specification) (metal, error) {

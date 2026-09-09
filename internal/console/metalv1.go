@@ -21,7 +21,6 @@ type metalv1 struct {
 	client         metalgo.Client
 	adminGroupName string
 	token          string
-	isadmin        bool
 }
 
 func newV1(log *slog.Logger, metalapiv1Url, token, adminGroupName string) (metal, error) {
@@ -71,8 +70,7 @@ func (m *metalv1) getMachine(ctx context.Context, machineID string) (*machine, e
 	}, nil
 }
 
-func (m *metalv1) checkIsAuthenticated(ctx context.Context) (bool, error) {
-
+func (m *metalv1) checkIsAdmin(ctx context.Context) (bool, error) {
 	user, err := m.client.User().GetMe(user.NewGetMeParams().WithContext(ctx), nil)
 	if err != nil {
 		m.log.Error("failed to fetch user details from oidc token", "error", err, "token", m.token)
@@ -80,7 +78,6 @@ func (m *metalv1) checkIsAuthenticated(ctx context.Context) (bool, error) {
 	}
 
 	if slices.Contains(user.Payload.Groups, m.adminGroupName) {
-		m.isadmin = true
 		return true, nil
 	}
 

@@ -134,7 +134,7 @@ func (m *mockMetal) getMachine(_ context.Context, machineID string) (*machine, e
 	}, nil
 }
 
-func (m *mockMetal) checkIsAuthenticated(context.Context) (bool, error) {
+func (m *mockMetal) checkIsAdmin(context.Context) (bool, error) {
 	return false, nil
 }
 

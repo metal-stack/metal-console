@@ -75,7 +75,7 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 		return
 	}
 
-	isAdmin, err := metal.checkIsAuthenticated(s.Context())
+	isAdmin, err := metal.checkIsAdmin(s.Context())
 	if err != nil {
 		cs.log.Error("check for authentication failed", "error", err)
 		cs.exitSession(s, err)
