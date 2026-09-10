@@ -95,6 +95,12 @@ func (cs *consoleServer) sessionHandler(s ssh.Session) {
 			cs.exitSession(s, err)
 			return
 		}
+
+		if !machine.isProvisioned {
+			cs.log.Error("machine is not yet fully provisioned", "error", err)
+			cs.exitSession(s, errors.New("the machine is not yet fully provisioned"))
+			return
+		}
 	}
 
 	cs.createdAts.Store(machineID, machine.createdAt.String())
